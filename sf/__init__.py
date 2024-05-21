@@ -1,6 +1,8 @@
 import os
 import inspect
 
+from sf.utils import create_workdir  # ease imports
+
 class IO_type:
     def __init__(self, type_, value, process=None) -> None:
         self.type = type_
