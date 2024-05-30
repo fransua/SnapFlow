@@ -40,7 +40,9 @@ class Process_dict(dict):
     def __init__(self, params, *args, **kwargs):
         self.update(*args, **kwargs)
         if params.get('with-singularity', None) is not None:
-            self.singularity  = f"singularity exec {params['with-singularity']} "
+            if  params.get('singularity-bind', None) is not None:
+                bind = f"--bind {params['singularity-bind']} "
+            self.singularity  = f"singularity exec {bind}{params['with-singularity']} "
         else:
             self.singularity  = ''
 

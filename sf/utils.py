@@ -2,10 +2,11 @@ import os
 from yaml import Dumper, dump as dump_yaml
 
 def create_workdir(result_dir, sample, config, singularity_img,
-                   params):
+                   singularity_bind, params):
     ## prepare parameter file
     if singularity_img is not None:
         params['with-singularity'] = singularity_img
+        params['singularity-bind'] = singularity_bind
 
     if os.path.exists(f"{result_dir}/bin"):
         # already done
