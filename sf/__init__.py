@@ -42,6 +42,8 @@ class Process_dict(dict):
         if params.get('with-singularity', None) is not None:
             if  params.get('singularity-bind', None) is not None:
                 bind = f"--bind {params['singularity-bind']} "
+            else:
+                bind = ''
             self.singularity  = f"singularity exec {bind}{params['with-singularity']} "
         else:
             self.singularity  = ''

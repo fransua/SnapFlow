@@ -1,7 +1,7 @@
 import os
 from yaml import Dumper, dump as dump_yaml
 
-def create_workdir(result_dir, sample, config, singularity_img,
+def create_workdir(result_dir, sample, singularity_img,
                    singularity_bind, params):
     ## prepare parameter file
     if singularity_img is not None:
@@ -15,7 +15,6 @@ def create_workdir(result_dir, sample, config, singularity_img,
 
     # actual files
     os.system(f"cp -r bin     {result_dir}/")
-    os.system(f"cp {config}   {result_dir}/")
 
     param_file = os.path.join(result_dir, f'{sample}_params.yaml')
     out = open(param_file, 'w', encoding='utf-8')
