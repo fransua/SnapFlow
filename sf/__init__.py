@@ -47,6 +47,9 @@ class Process_dict(dict):
             self.singularity  = f"singularity exec {bind}{params['with-singularity']} "
         else:
             self.singularity  = ''
+            
+        # to hold conversion table -> useful for meta-processes (1 job, several commands)
+        self.synonyms = {}
 
     def __setitem__(self, key, process):
         if key in self:
@@ -55,14 +58,19 @@ class Process_dict(dict):
             process.singularity = self.singularity
         dict.__setitem__(self, key, process)
 
+    def __getitem__(self, key):
+        try:
+            dict.__getitem__(self, key)
+        except KeyError:
+            dict.__getitem__(self, self.synonyms[key])
+
     def write_commands(self, opts) -> None:
         pid = 1
         for name, process in self.items():
-            # TODO: write cpus and time and memory 
+            # TODO: write memory 
             # # (memory per cpu should be written in order to compute number of cpus needed)
             if process.is_done():
                 continue
-            
             dependencies = []
             for dep in process.dependencies:
                 try:
