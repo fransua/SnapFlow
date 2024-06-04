@@ -60,9 +60,9 @@ class Process_dict(dict):
 
     def __getitem__(self, key):
         try:
-            dict.__getitem__(self, key)
+            return dict.__getitem__(self, key)
         except KeyError:
-            dict.__getitem__(self, self.synonyms[key])
+            return dict.__getitem__(self, self.synonyms[key])
 
     def write_commands(self, opts) -> None:
         pid = 1
