@@ -19,9 +19,9 @@ def main():
     yaml_params        = opts.yaml_params    # metadata
 
     sample             = opts.sample         # which to run
-    config             = opts.config         # how to run it
     result_dir         = opts.outdir         # where to run it
     singularity_img    = opts.singularity    # what to run with
+    sif_bind           = opts.sif_bind       # mount path for singularity
 
     params = load_yaml(open(yaml_params, 'r' , encoding='utf-8'), Loader=Loader)
 
@@ -31,8 +31,7 @@ def main():
         raise KeyError(f'ERROR: sample name should be one of: [{", ".join(list(params.keys()))}]')
 
     # prepare working directory
-    create_workdir(result_dir, sample, config, singularity_img,
-                   params)
+    create_workdir(result_dir, sample, singularity_img, sif_bind, params)
 
     ###########################################################################
     # START WORKFLOW
@@ -126,8 +125,6 @@ def get_options():
                         default=False,
                         help='''name of the sample to process
                         (should match name in the YAML parameter file)''')
-    parser.add_argument('-c', '--config', metavar='PATH', required=True,
-                        help='config file to use.')
     parser.add_argument('-o', dest='outdir', metavar='PATH', required=True,
                         help='''path to output directory''')
     parser.add_argument('-p', '--yaml_params', metavar='PATH', required=True,
@@ -135,6 +132,8 @@ def get_options():
                         associated metadata and parameters for the pipeline.''')
     parser.add_argument('--singularity', metavar='PATH', default=None,
                         help='PATH to singularity file to be used.')
+    parser.add_argument('--sif_bind', metavar='PATH', default=None,
+                        help='PATH to folder to bind to singularity')
     parser.add_argument('--sequential', action='store_true',
                         help='''outputs commands without depencies or cpu/time indications.''')
     opts = parser.parse_args()

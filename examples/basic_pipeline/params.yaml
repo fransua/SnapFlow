@@ -1,0 +1,5 @@
+test:
+  input: 
+    - Data/sample_1.fa     # better to use absolute paths when possible
+    - Data/sample_2.fa     # better to use absolute paths when possible
+    - Data/sample_3.fa     # better to use absolute paths when possible

@@ -1,7 +1,70 @@
 import os
-import inspect
+import sys
+import functools
+from sf.utils import create_workdir
+from sf import globals
 
-from sf.utils import create_workdir  # ease imports
+
+def rule(func):
+    """
+    SnapFlow decorator to create Process from a rule function.
+    rule functions need to declare at least 4 variables:
+     - "name"  : the name of the process (should be unique)
+     - "input_": a Dictionary listing needed input files
+     - "output": a Dictionary listing generated output files 
+     - "cmd"   : the command to be executed
+     
+    On top of this, the rule function should take at least two positional arguments:
+     - a Process_dict instance
+     - a dictionary with parameters
+     
+    and it should also have the `**kwargs` argument.
+    
+     -> The rule decorator will populate the kwargs argument with the "workdir" key to be used
+    for the definition of output paths.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Working directory is created in a hierarchy corresponding
+        # to the module hierarchy of the function called... just brilliant
+        # processes = args[0]
+        name           = func.__name__
+        modules        = func.__module__.split('.')[1:] + [name]
+        replicate_name = kwargs.get('replicate_name')
+
+        if replicate_name:
+            replicate_name = kwargs.get('replicate_name')
+            workdir = os.path.join(
+                    globals.processes.result_dir, 'tmp',
+                    *[*modules, replicate_name])
+            name = f"{name}_{replicate_name}"
+        else:
+            workdir = os.path.join(
+                    globals.processes.result_dir, 'tmp', modules)
+        kwargs['workdir'] = workdir
+        
+        rule_vars = {}
+        def tracer(frame, event, arg):
+            if event == 'return':
+                rule_vars.update(frame.f_locals)
+            return tracer
+        sys.setprofile(tracer)
+        
+        func(*args, **kwargs)
+        
+        sys.setprofile(None)
+        
+        # check all variables are created:
+        diff = set(['input_', 'output', 'cmd']).difference(rule_vars)
+        if diff:
+            raise TypeError('ERROR: missing variables to be defined in '
+                            f'{func.__module__}.{name}:\n {", ".join(diff)}')
+        
+        proc = Process(input_=rule_vars['input_'], workdir=workdir, output=rule_vars['output'],
+                       command=rule_vars['cmd'], name=name, module=modules)
+        globals.processes[name] = proc
+        return proc
+    return wrapper
 
 class IO_type:
     def __init__(self, type_, value, process=None) -> None:
@@ -37,7 +100,7 @@ class IO_type:
 
 
 class Process_dict(dict):
-    def __init__(self, params, *args, **kwargs):
+    def __init__(self, params, name=None, *args, **kwargs):
         self.update(*args, **kwargs)
         if params.get('with-singularity', None) is not None:
             if  params.get('singularity-bind', None) is not None:
@@ -47,13 +110,19 @@ class Process_dict(dict):
             self.singularity  = f"singularity exec {bind}{params['with-singularity']} "
         else:
             self.singularity  = ''
-            
+
+        self.result_dir = params['results directory']
+        
+        self.name = name
+
         # to hold conversion table -> useful for meta-processes (1 job, several commands)
         self.synonyms = {}
+        globals.processes = self
 
     def __setitem__(self, key, process):
         if key in self:
-            raise KeyError(f"Key {key} already defined. Rename it.")
+            raise KeyError(f"Key {key} already defined. Add the "
+                           "`replicate_name` argument to your Rule call.")
         if process.singularity == '':
             process.singularity = self.singularity
         dict.__setitem__(self, key, process)
@@ -63,10 +132,11 @@ class Process_dict(dict):
             return dict.__getitem__(self, key)
         except KeyError:
             return dict.__getitem__(self, self.synonyms[key])
-
+    
     def write_commands(self, opts) -> None:
         pid = 1
         for name, process in self.items():
+            print(name, process)
             # TODO: write memory 
             # # (memory per cpu should be written in order to compute number of cpus needed)
             if process.is_done():
@@ -92,14 +162,14 @@ class Process_dict(dict):
                         f"cpus-per-task {process.cpus};"
                         f"time {process.time}"
                         f"{dependencies}"
-                        "] ")
+                        f"] {process.singularity} ")
             print(prefix + f"/bin/bash {os.path.join(process.workdir, '.command.sh')}")
             pid += 1
 
 
     def do_mermaid(self, result_dir: str) -> None:
         from python_mermaid.diagram import MermaidDiagram, Node, Link
-
+        
         groups = set(p.module for p in self.values())
         nodes = [Node(n.lower()) for n in groups]
         nid = {}
@@ -109,7 +179,7 @@ class Process_dict(dict):
         for g in nodes:
             for n, p in self.items():
                 if p.module.lower()==g.id:
-                    this_node = Node(n, shape="circle")
+                    this_node = Node(p.rule_name, shape="circle")
                     g.add_sub_nodes([this_node])
                     p.pid = pid
                     nid[pid] = this_node
@@ -123,7 +193,7 @@ class Process_dict(dict):
                         links.append(Link(nio[i.name.lower()], this_node))
                     pid += 1
         chart = MermaidDiagram(
-        title="scHi-C-PRO pipeline",
+        title=self.name,
         nodes=nodes + list(nio.values()),
         links=links)
 
@@ -137,7 +207,7 @@ class Process:
     """
     job/process metadata class
     """
-    def __init__(self, input_: dict, output: dict, workdir: str,
+    def __init__(self, input_: dict, output: dict, workdir: str, module:str,
                  command: str, name: str, outvar: dict={}, publish=None,
                  cpus=1, memory=1, time=1, singularity=None, env=None) -> None:
         """
@@ -145,9 +215,7 @@ class Process:
            the first element should be the result file to "publish", and the
            second element the destination forder.
         """
-        frame = inspect.stack()[1]
-        module = inspect.getmodule(frame[0])
-        self.module = os.path.split(module.__file__)[-1].split('.')[0]
+        self.module, self.rule_name = module[-2:]
         self.workdir      = workdir
         os.system(f'mkdir -p {workdir}')
         self.input        = input_
@@ -192,7 +260,6 @@ class Process:
         script = PROCESS_SCRIPT.format(
             WORKDIR=self.workdir,
             ENV=self.env,
-            SINGULARITY=self.singularity,
             CMD=self.command,
             PUBLISH=' && '.join(self.publish) if self.publish else f'echo {self.name}')
         out = open(os.path.join(self.workdir, '.command.sh'), 'w', encoding='utf-8')
@@ -238,7 +305,7 @@ PROCESS_SCRIPT = '''
 
 {ENV}
 
-{SINGULARITY}{CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo ok > {WORKDIR}/.done
+{CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo ok > {WORKDIR}/.done
 
 {PUBLISH} ||  rm -f {WORKDIR}/.done
 
