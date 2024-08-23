@@ -46,9 +46,8 @@ then, using the template of the generate_workflow we add this lines:
 
 Inside the modules folder we can create the functions to e called to process the input as wanted.
 
-first the splitting:
+first the splitting and reversing:
 ```python
-import os
 from sf import IO_type, rule
 
 
@@ -59,12 +58,61 @@ def split_sequences(replicate, **kwargs):
         }
 
     output = {
-        'splitted_files': os.path.join(kwargs['workdir'], f"seq_*"),
+        'splitted_files': f"seq_*",
         }
 
-    cmd = f"""awk '/^>/{{f="{kwargs['workdir']}/seq_"++d}} {{print > f}}' < {input_['seq_path']}"""
+    cmd = f"""awk '/^>/{{f="seq_"++d}} {{print > f}}' < {input_['seq_path']}"""
+
+
+@rule
+def reverse(splitted, **kwargs):
+    input_  = {
+        'sequences': IO_type('path' , 'splitted_files', splitted),
+        }
+
+    output = {
+        'reversed': "reversed.fa",
+        }
+
+    cmd = f"""
+    python bin/reverse_sequences.py {input_['sequences']} {output['reversed']}
+"""
+```
+
+in parallel we can also create a rule to get some stats about sequences:
+
+```python
+import os
+from sf import IO_type, rule
+
+
+@rule
+def count_bases(splitted, **kwargs):
+
+    input_  = {
+        'sequences': IO_type('path' , 'splitted_files', splitted),
+        }
+
+    output = {
+        'stats': "stats.txt",
+        }
+
+    cmd = f"""
+for f in `ls {input_['sequences']}`;
+  do 
+    echo `head -n 1 $f`: `grep -v '>' $f | awk '{{print}}' ORS='' | wc -c` >> {output['stats']};
+  done
+echo Total sequences: `cat {input_['sequences']} | grep -v '>'| wc -l` >> {output['stats']}
+echo Total bases: `cat {input_['sequences']} | grep -v '>'| wc -l` >> {output['stats']}
+"""
+
+    publish = [
+        (output['stats'] , os.path.join('results', 'log')),
+    ]
 
 ```
+*Note: the publish variable created here that will be used to copy the wanted output files into the results folder.*
+
 To create a rule we just use the `rule` decorator on a function that contains 3 variables: `input_`, `output` and `cmd`.
 The decorator will take care of creating the graph of processes using the input and output defined here.
 
@@ -72,6 +120,8 @@ At the end our project could look like this:
 ```text
 .
 ├── basic_workflow.py
+├── bin
+│   └── reverse_sequences.py
 ├── Data
 │   ├── sample_1.fa
 │   ├── sample_2.fa
@@ -163,40 +213,41 @@ splitted_files ---> reverse
 After execution of the commands in the computing cluster, the output is organized as such:
 
 ```text
-.
-├── basic_run
-│   ├── DAG.mmd
-│   ├── test_params.yaml
-│   └── tmp
-│       ├── Sequence_stats
-│       │   └── count_bases
-│       │       ├── rep1
-│       │       │   └── stats.txt
-│       │       ├── rep2
-│       │       │   └── stats.txt
-│       │       └── rep3
-│       │           └── stats.txt
-│       └── sequence_transformation
-│           ├── reverse
-│           │   ├── rep1
-│           │   │   └── reversed.fa
-│           │   ├── rep2
-│           │   │   └── reversed.fa
-│           │   └── rep3
-│           │       └── reversed.fa
-│           └── split_sequences
-│               ├── rep1
-│               │   ├── seq_1
-│               │   ├── seq_2
-│               │   └── seq_3
-│               ├── rep2
-│               │   ├── seq_1
-│               │   ├── seq_2
-│               │   └── seq_3
-│               └── rep3
-│                   ├── seq_1
-│                   ├── seq_2
-│                   └── seq_3
+basic_run
+├── bin
+│   └── reverse_sequences.py
+├── DAG.mmd
+├── results
+│   └── log
+│       └── stats.txt
+├── test_params.yaml
+└── tmp
+    ├── Sequence_stats
+    │   └── count_bases
+    │       ├── rep1
+    │       │   └── stats.txt
+    │       ├── rep2
+    │       │   └── stats.txt
+    │       └── rep3
+    │           └── stats.txt
+    └── sequence_transformation
+        ├── reverse
+        │   ├── rep1
+        │   ├── rep2
+        │   └── rep3
+        └── split_sequences
+            ├── rep1
+            │   ├── seq_1
+            │   ├── seq_2
+            │   └── seq_3
+            ├── rep2
+            │   ├── seq_1
+            │   ├── seq_2
+            │   └── seq_3
+            └── rep3
+                ├── seq_1
+                ├── seq_2
+                └── seq_3
 
 ```
 

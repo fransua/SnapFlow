@@ -9,10 +9,12 @@ def rule(func):
     """
     SnapFlow decorator to create Process from a rule function.
     rule functions need to declare at least 4 variables:
-     - "name"  : the name of the process (should be unique)
      - "input_": a Dictionary listing needed input files
-     - "output": a Dictionary listing generated output files 
+     - "output": a Dictionary listing generated output files (should be relative path)
      - "cmd"   : the command to be executed
+     
+    Optionally we can also set:
+     - "publish": a dictionary to copy most relevant output files to the `results` folder.
      
     On top of this, the rule function should take at least two positional arguments:
      - a Process_dict instance
@@ -41,7 +43,6 @@ def rule(func):
         else:
             workdir = os.path.join(
                     globals.processes.result_dir, 'tmp', modules)
-        kwargs['workdir'] = workdir
         
         rule_vars = {}
         def tracer(frame, event, arg):
@@ -61,13 +62,14 @@ def rule(func):
                             f'{func.__module__}.{name}:\n {", ".join(diff)}')
         
         proc = Process(input_=rule_vars['input_'], workdir=workdir, output=rule_vars['output'],
-                       command=rule_vars['cmd'], name=name, module=modules)
+                       command=rule_vars['cmd'], name=name, module=modules, 
+                       publish=rule_vars.get('publish'))
         globals.processes[name] = proc
         return proc
     return wrapper
 
 class IO_type:
-    def __init__(self, type_, value, process=None) -> None:
+    def __init__(self, type_: str, value, process=None) -> None:
         self.type = type_
         self.process = process
         self.name = os.path.split(value)[-1] if process is None else value
@@ -83,6 +85,7 @@ class IO_type:
 
     def validate(self):
         if self.process is None and self.type == "path":
+            self.value = os.path.abspath(self.value)
             return os.path.exists(self.value)
         if self.type == "int":
             try:
@@ -111,7 +114,7 @@ class Process_dict(dict):
         else:
             self.singularity  = ''
 
-        self.result_dir = params['results directory']
+        self.result_dir = os.path.abspath(params['results directory'])
         
         self.name = name
 
@@ -222,7 +225,19 @@ class Process:
         self.outvar       = outvar
         if outvar:
             self.output.update(outvar)
-        self.command      = command
+        # output paths that are not absolute are placed inside workdir
+        for k, v in output.items():
+            if not os.path.isabs(v):
+                output[k] = os.path.join(self.workdir, v)
+        for k, v in outvar.items():
+            if not os.path.isabs(v):
+                outvar[k] = os.path.join(self.workdir, v)
+
+        # commands including path to executable inside the bin folder are made absolute
+        self.command      = command.replace(' bin/', f' {globals.processes.result_dir}/bin/')
+        if self.command.startswith('bin/'):
+            self.command = command.replace('bin/', f'{globals.processes.result_dir}/bin/')
+
         self.name         = name
         self.dependencies = set(v.process.name for v in self.input.values()
                                 if v.process is not None)
@@ -233,9 +248,9 @@ class Process:
         self.status       = False
 
         self.publish      = []
-        
+
         self.update_publish_info(publish)
-                
+
         self.env         = '' if env         is None else env          # TODO: implement
         self.singularity = '' if singularity is None else singularity
 
@@ -252,7 +267,8 @@ class Process:
                 raise TypeError("ERROR: 'publish' should be a list or tuple.")
             for origin_file, *destiny in publish:
                 dest_name = os.path.join(*destiny)  # dirty trick for renaming possibility
-                os.system(f'mkdir -p {destiny[0]}')
+                dest_name = os.path.join(globals.processes.result_dir, dest_name)
+                os.system(f'mkdir -p {dest_name}')
                 self.publish.append(f"cp -rf {origin_file} {dest_name}")
 
     def format_executable(self):
@@ -303,6 +319,8 @@ PROCESS_SCRIPT = '''
 #! /bin/bash
 
 {ENV}
+
+cd {WORKDIR}
 
 {CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo ok > {WORKDIR}/.done
 

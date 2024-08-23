@@ -10,7 +10,7 @@ def count_bases(splitted, **kwargs):
         }
 
     output = {
-        'stats': os.path.join(kwargs['workdir'], "stats.txt"),
+        'stats': "stats.txt",
         }
 
     cmd = f"""
@@ -21,3 +21,7 @@ for f in `ls {input_['sequences']}`;
 echo Total sequences: `cat {input_['sequences']} | grep -v '>'| wc -l` >> {output['stats']}
 echo Total bases: `cat {input_['sequences']} | grep -v '>'| wc -l` >> {output['stats']}
 """
+
+    publish = [
+        (output['stats'] , os.path.join('results', 'log')),
+    ]
