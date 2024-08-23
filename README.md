@@ -106,7 +106,7 @@ This output can be parsed to generate commands with dependency rules.
 
 the script also generates a DAG that looks like:
 
-```
+```mermaid
 ---
 title: scHi-C-PRO pipeline
 ---
