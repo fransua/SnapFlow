@@ -44,7 +44,7 @@ then, using the template of the generate_workflow we add this lines:
     processes.do_mermaid(result_dir)
 ```
 
-Inside the modules folder we can create the functions to e called to process the input as wanted.
+Inside the modules folder we can create the `rule` functions to process the input as wanted.
 
 first the splitting and reversing:
 ```python
@@ -78,6 +78,13 @@ def reverse(splitted, **kwargs):
     python bin/reverse_sequences.py {input_['sequences']} {output['reversed']}
 """
 ```
+
+`rule` functions should have the `@rule` decorator, accept a `**kwargs` parameter and contain at least this 3 variables:
+  - `input_` : to hold a dictionary of the input data
+  - `output` : to hold a dictionary of the output data
+  - `cmd`: to store the command to be run
+
+  *Note: `input_` and `output` variables defined here are used to define the job dependency graph.*
 
 in parallel we can also create a rule to get some stats about sequences:
 
@@ -154,7 +161,7 @@ The output would be:
 ```
 This output can be parsed to generate commands with dependency rules.
 
-the script also generates a DAG that looks like:
+the script also generates a DAG representing the job dependency graph that looks like:
 
 ```mermaid
 ---
