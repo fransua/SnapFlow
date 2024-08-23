@@ -1,2 +1,203 @@
 # SnapFlow
 simple workflow manager in python
+
+## Basic example
+
+Can be found in in `examples/basic_pipeline`.
+
+The idea of the pipeline os to process 3 FASTA files in the following manner:
+  - split the file by sequence
+  - reverse the sequences
+  - compute some stats about the original sequences.
+
+We first create a yaml file that contain the path to the input files `params.yaml`:
+
+```yaml
+test:
+  input: 
+    - Data/sample_1.fa
+    - Data/sample_2.fa
+    - Data/sample_3.fa
+```
+
+then, using the template of the generate_workflow we add this lines:
+
+```python
+    ###########################################################################
+    # START WORKFLOW
+
+    # place to store workflow jobs:
+    processes = Process_dict(params, name='Basic pipeline')
+
+    ## Split sequences in the fasta into different files
+    for rep, replicate in enumerate(params['input'], 1):
+        splitted = split_sequences(replicate, replicate_name=f"rep{rep}")
+
+        ## Reverse each sequence
+        reverse(splitted, replicate_name=f"rep{rep}")
+        
+        count_bases(splitted, replicate_name=f"rep{rep}")
+
+    ####
+    # END WORKFLOW
+    processes.write_commands(opts)
+    processes.do_mermaid(result_dir)
+```
+
+Inside the modules folder we can create the functions to e called to process the input as wanted.
+
+first the splitting:
+```python
+import os
+from sf import IO_type, rule
+
+
+@rule
+def split_sequences(replicate, **kwargs):
+    input_  = {
+        'seq_path' : IO_type('path', replicate),
+        }
+
+    output = {
+        'splitted_files': os.path.join(kwargs['workdir'], f"seq_*"),
+        }
+
+    cmd = f"""awk '/^>/{{f="{kwargs['workdir']}/seq_"++d}} {{print > f}}' < {input_['seq_path']}"""
+
+```
+To create a rule we just use the `rule` decorator on a function that contains 3 variables: `input_`, `output` and `cmd`.
+The decorator will take care of creating the graph of processes using the input and output defined here.
+
+At the end our project could look like this:
+```text
+.
+├── basic_workflow.py
+├── Data
+│   ├── sample_1.fa
+│   ├── sample_2.fa
+│   └── sample_3.fa
+├── modules
+│   ├── Sequence_stats.py
+│   └── sequence_transformation.py
+└── params.yaml
+```
+
+This script can be run as such:
+
+```bash
+python basic_workflow.py --sample test -o basic_run -p params.yaml
+```
+
+The output would be:
+
+```text
+[name scHiC-split_sequences_rep1;cpus-per-task 1;time 1]  /bin/bash basic_run/tmp/sequence_transformation/split_sequences/rep1/.command.sh
+[name scHiC-reverse_rep1;cpus-per-task 1;time 1;depe 1]  /bin/bash basic_run/tmp/sequence_transformation/reverse/rep1/.command.sh
+[name scHiC-count_bases_rep1;cpus-per-task 1;time 1;depe 1]  /bin/bash basic_run/tmp/Sequence_stats/count_bases/rep1/.command.sh
+[name scHiC-split_sequences_rep2;cpus-per-task 1;time 1]  /bin/bash basic_run/tmp/sequence_transformation/split_sequences/rep2/.command.sh
+[name scHiC-reverse_rep2;cpus-per-task 1;time 1;depe 4]  /bin/bash basic_run/tmp/sequence_transformation/reverse/rep2/.command.sh
+[name scHiC-count_bases_rep2;cpus-per-task 1;time 1;depe 4]  /bin/bash basic_run/tmp/Sequence_stats/count_bases/rep2/.command.sh
+[name scHiC-split_sequences_rep3;cpus-per-task 1;time 1]  /bin/bash basic_run/tmp/sequence_transformation/split_sequences/rep3/.command.sh
+[name scHiC-reverse_rep3;cpus-per-task 1;time 1;depe 7]  /bin/bash basic_run/tmp/sequence_transformation/reverse/rep3/.command.sh
+[name scHiC-count_bases_rep3;cpus-per-task 1;time 1;depe 7]  /bin/bash basic_run/tmp/Sequence_stats/count_bases/rep3/.command.sh
+
+```
+This output can be parsed to generate commands with dependency rules.
+
+the script also generates a DAG that looks like:
+
+```
+---
+title: scHi-C-PRO pipeline
+---
+graph 
+subgraph sequence_stats ["sequence_stats"]
+count_bases(("count_bases"))
+stats{{"stats"}}
+count_bases(("count_bases"))
+stats{{"stats"}}
+count_bases(("count_bases"))
+stats{{"stats"}}
+end
+subgraph sequence_transformation ["sequence_transformation"]
+split_sequences(("split_sequences"))
+splitted_files{{"splitted_files"}}
+reverse(("reverse"))
+reversed{{"reversed"}}
+split_sequences(("split_sequences"))
+splitted_files{{"splitted_files"}}
+reverse(("reverse"))
+reversed{{"reversed"}}
+split_sequences(("split_sequences"))
+splitted_files{{"splitted_files"}}
+reverse(("reverse"))
+reversed{{"reversed"}}
+end
+stats{{"stats"}}
+splitted_files{{"splitted_files"}}
+sample_1.fa[("sample_1.fa")]
+reversed{{"reversed"}}
+sample_2.fa[("sample_2.fa")]
+sample_3.fa[("sample_3.fa")]
+count_bases ---> stats
+splitted_files ---> count_bases
+count_bases ---> stats
+splitted_files ---> count_bases
+count_bases ---> stats
+splitted_files ---> count_bases
+split_sequences ---> splitted_files
+sample_1.fa ---> split_sequences
+reverse ---> reversed
+splitted_files ---> reverse
+split_sequences ---> splitted_files
+sample_2.fa ---> split_sequences
+reverse ---> reversed
+splitted_files ---> reverse
+split_sequences ---> splitted_files
+sample_3.fa ---> split_sequences
+reverse ---> reversed
+splitted_files ---> reverse
+```
+
+
+After execution of the commands in the computing cluster, the output is organized as such:
+
+```text
+.
+├── basic_run
+│   ├── DAG.mmd
+│   ├── test_params.yaml
+│   └── tmp
+│       ├── Sequence_stats
+│       │   └── count_bases
+│       │       ├── rep1
+│       │       │   └── stats.txt
+│       │       ├── rep2
+│       │       │   └── stats.txt
+│       │       └── rep3
+│       │           └── stats.txt
+│       └── sequence_transformation
+│           ├── reverse
+│           │   ├── rep1
+│           │   │   └── reversed.fa
+│           │   ├── rep2
+│           │   │   └── reversed.fa
+│           │   └── rep3
+│           │       └── reversed.fa
+│           └── split_sequences
+│               ├── rep1
+│               │   ├── seq_1
+│               │   ├── seq_2
+│               │   └── seq_3
+│               ├── rep2
+│               │   ├── seq_1
+│               │   ├── seq_2
+│               │   └── seq_3
+│               └── rep3
+│                   ├── seq_1
+│                   ├── seq_2
+│                   └── seq_3
+
+```
+
+The structure of the output respects the module structure defined.

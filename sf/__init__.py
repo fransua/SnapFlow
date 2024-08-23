@@ -136,7 +136,6 @@ class Process_dict(dict):
     def write_commands(self, opts) -> None:
         pid = 1
         for name, process in self.items():
-            print(name, process)
             # TODO: write memory 
             # # (memory per cpu should be written in order to compute number of cpus needed)
             if process.is_done():
