@@ -108,7 +108,7 @@ the script also generates a DAG that looks like:
 
 ```mermaid
 ---
-title: scHi-C-PRO pipeline
+title: Basic pipeline
 ---
 graph 
 subgraph sequence_stats ["sequence_stats"]
