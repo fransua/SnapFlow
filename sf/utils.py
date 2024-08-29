@@ -26,3 +26,26 @@ def create_workdir(result_dir, sample, singularity_img,
     ## TODO: check if differences in parameters (e.g. singularity or versions)
     out.write(dump_yaml(params, Dumper=Dumper))
     out.close()
+
+
+def transform_path_to_absolute(path):
+    if isinstance(path, list) or isinstance(path, tuple):
+        paths = []
+        for p in path:
+            if isinstance(p, str) and os.path.exists(p):
+                paths.append(os.path.abspath(p))
+            else:
+                paths.append(p)
+        return paths
+    if isinstance(path, str) and os.path.exists(path):
+        return os.path.abspath(path)
+    return path
+
+def make_path_absolute(params):
+    for key, value in params.items():
+        if isinstance(value, dict):
+            # Recursively apply transformation to nested dictionaries
+            make_path_absolute(value)
+        else:
+            # Apply the transformation function to the value in place
+            params[key] = transform_path_to_absolute(value)

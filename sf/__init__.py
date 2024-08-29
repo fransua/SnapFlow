@@ -1,7 +1,7 @@
 import os
 import sys
 import functools
-from sf.utils import create_workdir
+from sf.utils import create_workdir, make_path_absolute
 from sf import globals
 
 
@@ -34,7 +34,7 @@ def rule(func):
         modules        = func.__module__.split('.')[1:] + [name]
         replicate_name = kwargs.get('replicate_name')
 
-        if replicate_name:
+        if replicate_name is not None:
             replicate_name = kwargs.get('replicate_name')
             workdir = os.path.join(
                     globals.processes.result_dir, 'tmp',
@@ -42,7 +42,7 @@ def rule(func):
             name = f"{name}_{replicate_name}"
         else:
             workdir = os.path.join(
-                    globals.processes.result_dir, 'tmp', modules)
+                    globals.processes.result_dir, 'tmp', *modules)
         
         rule_vars = {}
         def tracer(frame, event, arg):
@@ -61,10 +61,24 @@ def rule(func):
             raise TypeError('ERROR: missing variables to be defined in '
                             f'{func.__module__}.{name}:\n {", ".join(diff)}')
         
-        proc = Process(input_=rule_vars['input_'], workdir=workdir, output=rule_vars['output'],
-                       command=rule_vars['cmd'], name=name, module=modules, 
-                       publish=rule_vars.get('publish'))
+        proc = Process(input_=rule_vars['input_'], workdir=workdir,
+                       output=rule_vars['output'], func_name=func.__name__,
+                       command=rule_vars['cmd'], name=name, module=modules,
+                       processes=globals.processes, publish=rule_vars.get('publish'))
         globals.processes[name] = proc
+        
+        # define sisters: processes using the same function
+        # (in order to ease the retrieval of outputs)
+        if replicate_name is not None:
+            if func.__name__ not in globals.processes.families:
+                globals.processes.families[func.__name__] = {}
+            globals.processes.families[func.__name__][name] = proc
+            
+            # TODO: too specific... are synonyms needed??
+            replicates =  kwargs.get("replicates")
+            if replicates is not None:
+                for replicate, read in replicates:
+                    globals.processes.synonyms[f"{name} {replicate} R{read}"] = name
         return proc
     return wrapper
 
@@ -120,6 +134,7 @@ class Process_dict(dict):
 
         # to hold conversion table -> useful for meta-processes (1 job, several commands)
         self.synonyms = {}
+        self.families = {}
         globals.processes = self
 
     def __setitem__(self, key, process):
@@ -204,34 +219,45 @@ class Process_dict(dict):
         out.close()
 
 
+class _Process_output(dict):
+    def __init__(self, process, *args, **kwargs):
+        self.update(*args, **kwargs)
+        self.process = process
+
+    def __getitem__(self, key):
+        try:
+            return dict.__getitem__(self, key)
+        except KeyError:
+            for sister in self.process.processes.families[self.process.func_name].values():
+                if key in sister.output:
+                    return sister.output[key]
+        raise KeyError
+
 
 class Process:
     """
     job/process metadata class
     """
-    def __init__(self, input_: dict, output: dict, workdir: str, module:str,
-                 command: str, name: str, outvar: dict={}, publish=None,
-                 cpus=1, memory=1, time=1, singularity=None, env=None) -> None:
+    def __init__(self, input_: dict, output: _Process_output, workdir: str, 
+                 module:str, command: str, name: str, processes: Process_dict,
+                 func_name: str, publish=None, cpus=1, memory=1, time=1,
+                 singularity=None, env=None) -> None:
         """
         params None publish: should be a list of pair of path. Within each pair,
            the first element should be the result file to "publish", and the
            second element the destination forder.
         """
+        self.processes = processes
         self.module, self.rule_name = module[-2:]
         self.workdir      = workdir
         os.system(f'mkdir -p {workdir}')
         self.input        = input_
-        self.output       = output
-        self.outvar       = outvar
-        if outvar:
-            self.output.update(outvar)
+        self.func_name    = func_name
         # output paths that are not absolute are placed inside workdir
         for k, v in output.items():
             if not os.path.isabs(v):
                 output[k] = os.path.join(self.workdir, v)
-        for k, v in outvar.items():
-            if not os.path.isabs(v):
-                outvar[k] = os.path.join(self.workdir, v)
+        self.output       = _Process_output(self, output)
 
         # commands including path to executable inside the bin folder are made absolute
         self.command      = command.replace(' bin/', f' {globals.processes.result_dir}/bin/')
@@ -311,12 +337,14 @@ class Process:
         Check if all output files are generated
         """
         for output, fpath in self.output.items():
-            if not os.path.exists(fpath) and output not in self.outvar:
+            if not os.path.exists(fpath):
                 return False
         return True
 
 PROCESS_SCRIPT = '''
 #! /bin/bash
+
+set -euo pipefail  # any error or undefined variable or pipefail (respectively) will stop the script
 
 {ENV}
 
