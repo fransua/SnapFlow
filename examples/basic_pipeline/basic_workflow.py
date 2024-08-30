@@ -41,12 +41,12 @@ def main():
 
     ## Split sequences in the fasta into different files
     for rep, replicate in enumerate(params['input'], 1):
-        splitted = split_sequences(replicate, replicate_name=f"rep{rep}")
+        splitted = split_sequences(replicate, replicate_name=f"rep{rep}", time="5:00")
 
         ## Reverse each sequence
-        reverse(splitted, replicate_name=f"rep{rep}")
+        reverse(splitted, replicate_name=f"rep{rep}", time="1:00")
         
-        count_bases(splitted, replicate_name=f"rep{rep}")
+        count_bases(splitted, replicate_name=f"rep{rep}", time="2:00")
 
     ####
     # END WORKFLOW

@@ -1,9 +1,20 @@
 # SnapFlow
 Simple workflow manager in python.
 
-*Note: this is not to execute jobs. It only outputs a list of commands with dependencies and other directives. This output is then to be parsed to create procesesses for batch queuing systems (i.e. Slurm, LSF, OGE, etc...).*
 
-*An example of such parser, for Slurm, can be found [here](https://github.com/fransua/slurm_utils/blob/master/scripts/submitting/slurm_do.py).*
+### Advantages
+- no metalanguage involved. This is pure Python.
+- minimum complexity, with no restrictions on objects types or I/O for process functions. There are no channels to store files, no piping between processes...
+- no hashes in output paths. Only human-readable path. Outputs are organized mirroring function and modules hierarchies.
+- not interactive. The software generates:
+  - a list of commands and their corresponding execution constraints (dependencies, time, number of CPUs, memory...)
+  - the output folder hierarchy and required binaries
+
+### Disadvantages
+- not interactive: it is completely independent from the batch queuing systems (i.e. Slurm, LSF, OGE, etc...). You should write a script to pass the list of commands and the execution constraints to the queuing system.
+
+*An example of such parser, compatible with Slurm, can be found [here](https://github.com/fransua/slurm_utils/blob/master/scripts/submitting/slurm_do.py).*
+
 
 ## Basic example
 
@@ -152,15 +163,16 @@ python basic_workflow.py --sample test -o basic_run -p params.yaml
 The output would be:
 
 ```text
-[name scHiC-split_sequences_rep1;cpus-per-task 1;time 1]  /bin/bash basic_run/tmp/sequence_transformation/split_sequences/rep1/.command.sh
-[name scHiC-reverse_rep1;cpus-per-task 1;time 1;depe 1]  /bin/bash basic_run/tmp/sequence_transformation/reverse/rep1/.command.sh
-[name scHiC-count_bases_rep1;cpus-per-task 1;time 1;depe 1]  /bin/bash basic_run/tmp/Sequence_stats/count_bases/rep1/.command.sh
-[name scHiC-split_sequences_rep2;cpus-per-task 1;time 1]  /bin/bash basic_run/tmp/sequence_transformation/split_sequences/rep2/.command.sh
-[name scHiC-reverse_rep2;cpus-per-task 1;time 1;depe 4]  /bin/bash basic_run/tmp/sequence_transformation/reverse/rep2/.command.sh
-[name scHiC-count_bases_rep2;cpus-per-task 1;time 1;depe 4]  /bin/bash basic_run/tmp/Sequence_stats/count_bases/rep2/.command.sh
-[name scHiC-split_sequences_rep3;cpus-per-task 1;time 1]  /bin/bash basic_run/tmp/sequence_transformation/split_sequences/rep3/.command.sh
-[name scHiC-reverse_rep3;cpus-per-task 1;time 1;depe 7]  /bin/bash basic_run/tmp/sequence_transformation/reverse/rep3/.command.sh
-[name scHiC-count_bases_rep3;cpus-per-task 1;time 1;depe 7]  /bin/bash basic_run/tmp/Sequence_stats/count_bases/rep3/.command.sh
+[name scHiC-split_sequences_rep1;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep1/.command.sh
+[name scHiC-reverse_rep1;cpus-per-task 1;time 1:00;depe 1]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep1/.command.sh
+[name scHiC-count_bases_rep1;cpus-per-task 1;time 2:00;depe 1]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep1/.command.sh
+[name scHiC-split_sequences_rep2;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep2/.command.sh
+[name scHiC-reverse_rep2;cpus-per-task 1;time 1:00;depe 4]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep2/.command.sh
+[name scHiC-count_bases_rep2;cpus-per-task 1;time 2:00;depe 4]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep2/.command.sh
+[name scHiC-split_sequences_rep3;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep3/.command.sh
+[name scHiC-reverse_rep3;cpus-per-task 1;time 1:00;depe 7]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep3/.command.sh
+[name scHiC-count_bases_rep3;cpus-per-task 1;time 2:00;depe 7]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep3/.command.sh
+
 
 ```
 This output can be parsed to generate commands with dependency rules.

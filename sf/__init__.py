@@ -65,7 +65,8 @@ def rule(func):
         proc = Process(input_=rule_vars['input_'], workdir=workdir,
                        output=rule_vars['output'], func_name=func.__name__,
                        command=rule_vars['cmd'], name=name, module=modules,
-                       processes=globals.processes, publish=rule_vars.get('publish'))
+                       processes=globals.processes, publish=rule_vars.get('publish'),
+                       **kwargs)
         globals.processes[name] = proc
         
         # define sisters: processes using the same function
@@ -240,7 +241,7 @@ class Process:
     def __init__(self, input_: dict, output: _Process_output, workdir: str, 
                  module:str, command: str, name: str, processes: Process_dict,
                  func_name: str, publish=None, cpus=1, memory=1, time=1,
-                 singularity=None, env=None) -> None:
+                 singularity=None, env=None, **kwargs) -> None:
         """
         params None publish: should be a list of pair of path. Within each pair,
            the first element should be the result file to "publish", and the
