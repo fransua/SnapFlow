@@ -2,6 +2,7 @@ import os
 import sys
 import functools
 from sf.utils import create_workdir, make_path_absolute
+from sf.utils import validate_path
 from sf import globals
 
 
@@ -35,7 +36,7 @@ def rule(func):
         replicate_name = kwargs.get('replicate_name')
 
         if replicate_name is not None:
-            replicate_name = kwargs.get('replicate_name')
+            validate_path(replicate_name)
             workdir = os.path.join(
                     globals.processes.result_dir, 'tmp',
                     *[*modules, replicate_name])
@@ -74,11 +75,6 @@ def rule(func):
                 globals.processes.families[func.__name__] = {}
             globals.processes.families[func.__name__][name] = proc
             
-            # TODO: too specific... are synonyms needed??
-            replicates =  kwargs.get("replicates")
-            if replicates is not None:
-                for replicate, read in replicates:
-                    globals.processes.synonyms[f"{name} {replicate} R{read}"] = name
         return proc
     return wrapper
 
@@ -231,7 +227,7 @@ class _Process_output(dict):
             for sister in self.process.processes.families[self.process.func_name].values():
                 if key in sister.output:
                     return sister.output[key]
-        raise KeyError
+        raise KeyError(f'key "{key}" not found')
 
 
 class Process:
