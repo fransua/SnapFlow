@@ -40,9 +40,9 @@ class InvalidPathError(ValueError):
 def validate_path(path_str, directory=False):
     # define invalid characters for paths
     if directory:
-        invalid_chars = '<>:"\\|? *'
+        invalid_chars = '<>"\\ | '
     else:
-        invalid_chars = '<>:"/\\|? *'
+        invalid_chars = '<>"/\\|? *'
     if any(char in path_str for char in invalid_chars):
         raise InvalidPathError(path_str, invalid_chars)
     if path_str.startswith('-'):
