@@ -1,5 +1,9 @@
 # SnapFlow
-simple workflow manager in python
+Simple workflow manager in python.
+
+*Note: this is not to execute jobs. It only outputs a list of commands with dependencies and other directives. This output is then to be parsed to create procesesses for batch queuing systems (i.e. Slurm, LSF, OGE, etc...).*
+
+*An example of such parser, for Slurm, can be found [here](https://github.com/fransua/slurm_utils/blob/master/scripts/submitting/slurm_do.py).*
 
 ## Basic example
 
