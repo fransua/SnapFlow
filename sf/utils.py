@@ -37,16 +37,19 @@ class InvalidPathError(ValueError):
             f" characters or patterns (such as any of: {invalid_chars}).")
         super().__init__(self.message)
 
-def validate_path(path_str):
+def validate_path(path_str, directory=False):
     # define invalid characters for paths
-    invalid_chars = '<>:"/\\|? *'
+    if directory:
+        invalid_chars = '<>:"\\|? *'
+    else:
+        invalid_chars = '<>:"/\\|? *'
     if any(char in path_str for char in invalid_chars):
         raise InvalidPathError(path_str, invalid_chars)
     if path_str.startswith('-'):
         raise InvalidPathError(path_str, "starting with a dash")
 
     if path_str in ['.', '..']:
-        raise InvalidPathError(path_str, "being single or double do")
+        raise InvalidPathError(path_str, "being single or double dot")
 
     return path_str
 

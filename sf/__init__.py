@@ -97,6 +97,9 @@ class IO_type:
         if self.process is None and self.type == "path":
             self.value = os.path.abspath(self.value)
             return os.path.exists(self.value)
+        elif self.type == "path":
+            validate_path(self.value, directory=True)
+            return True
         if self.type == "int":
             try:
                 self.value = int(self.value)
