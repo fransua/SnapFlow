@@ -117,7 +117,15 @@ class IO_type:
 
 
 class Process_dict(dict):
+    """
+    Global dictionary to keep track of the processes to be executed.
+    
+    It takes as parameter a dictionary of parameters.
+    """
     def __init__(self, params, name=None, *args, **kwargs):
+        """
+        :param params: dictionary of parameters
+        """
         self.update(*args, **kwargs)
         if params.get('with-singularity', None) is not None:
             if  params.get('singularity-bind', None) is not None:
@@ -151,7 +159,15 @@ class Process_dict(dict):
         except KeyError:
             return dict.__getitem__(self, self.synonyms[key])
     
-    def write_commands(self, opts) -> None:
+    def write_commands(self, sequential=True) -> None:
+        """
+        Write commands in stdout
+        
+        :param True sequential: if True commands are printed without any information
+           about dependencies or number of cpus... They can be run directly in a
+           sequential manner. Otherwise they will be printed preceded by a string 
+           between brackets containing process specifications.
+        """
         pid = 1
         for name, process in self.items():
             # TODO: write memory 
@@ -171,7 +187,7 @@ class Process_dict(dict):
                 dependencies = f";depe {','.join(dependencies)}"
             else:
                 dependencies = ''
-            if opts.sequential:
+            if sequential:
                 prefix = ''
             else:
                 prefix = ("["
@@ -185,6 +201,9 @@ class Process_dict(dict):
 
 
     def do_mermaid(self, result_dir: str) -> None:
+        """
+        generates a mermaid Directed Acyclic Graph from the processes dictionary.
+        """
         from python_mermaid.diagram import MermaidDiagram, Node, Link
         
         groups = set(p.module for p in self.values())
@@ -220,6 +239,9 @@ class Process_dict(dict):
 
 
 class _Process_output(dict):
+    """
+    to store process output and relate the outputs of sister processes
+    """
     def __init__(self, process, *args, **kwargs):
         self.update(*args, **kwargs)
         self.process = process
@@ -243,7 +265,16 @@ class Process:
                  func_name: str, publish=None, cpus=1, memory=1, time=1,
                  singularity=None, env=None, **kwargs) -> None:
         """
-        params None publish: should be a list of pair of path. Within each pair,
+        inputs and outputs defined here are used to infer processes relational
+        dependencies.
+        
+        :param input_: a dictionary of inputs. Values should be IO_type objects.
+        :param output:  a dictionary of outputs.
+        :param workdir: path where the process will be executed
+        :param module: module where the Process function (with the @rule decorator)
+           is defined
+        :param command:        
+        :param None publish: should be a list of pair of path. Within each pair,
            the first element should be the result file to "publish", and the
            second element the destination forder.
         """
@@ -277,7 +308,7 @@ class Process:
 
         self.update_publish_info(publish)
 
-        self.env         = '' if env         is None else env          # TODO: implement
+        self.env         = '' if env         is None else env
         self.singularity = '' if singularity is None else singularity
 
         # gets an error if something missing:

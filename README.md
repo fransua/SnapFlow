@@ -275,3 +275,19 @@ basic_run
 ```
 
 The structure of the output respects the module structure defined.
+
+
+## Advanced options
+
+### The rule function
+
+The rule decorator to put before a process function reads the kwargs parameter
+ searching for specific keywords as `time` or `cpus`. 
+ 
+ The complete list is:
+ - `time`: a string with the maximum time estimated for the process
+ - `cpus`: number of CPUs needed in the assigned computational node.
+ - `memory`: maximum memory allowed to be used by the process
+ - `singularity`: path to a singularity image (use a blank space `singularity=" "` to override the global singularity definition.)
+ - `env`: a string with some environments setup (i.e.: `module load samtools`)
+ - `replicate_name`: name extension for the process. It is compulsory when a process is called more than once.
