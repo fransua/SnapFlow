@@ -27,7 +27,8 @@ def create_workdir(result_dir, sample, singularity_img,
     os.system(f"mkdir -p {result_dir}")
 
     # copy executable files and scripts
-    os.system(f"cp -r bin {result_dir}/")
+    if os.path.exists('bin'):
+        os.system(f"cp -r bin {result_dir}/")
 
     out = open(param_file, 'w', encoding='utf-8')
     ## TODO: check if differences in parameters (e.g. singularity or versions)

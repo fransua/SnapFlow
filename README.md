@@ -55,7 +55,7 @@ then, using the template of the generate_workflow we add this lines:
 
     ####
     # END WORKFLOW
-    processes.write_commands(opts)
+    processes.write_commands(opts.sequential)
     processes.do_mermaid(result_dir)
 ```
 

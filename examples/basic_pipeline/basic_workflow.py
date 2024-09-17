@@ -50,7 +50,7 @@ def main():
 
     ####
     # END WORKFLOW
-    processes.write_commands(opts)
+    processes.write_commands(opts.sequential)
     processes.do_mermaid(result_dir)
 
 def get_options():
