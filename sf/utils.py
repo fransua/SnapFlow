@@ -21,9 +21,9 @@ def create_workdir(result_dir, sample, singularity_img,
 
     param_file = os.path.join(result_dir, f'{sample}_params.yaml')
 
-    if os.path.exists(param_file):
-        # already done
-        return
+    # if os.path.exists(param_file):
+    #     # already done
+    #     return
     os.system(f"mkdir -p {result_dir}")
 
     # copy executable files and scripts
