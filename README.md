@@ -11,7 +11,7 @@ Simple workflow manager in python.
   - the output folder hierarchy and required binaries
 
 ### Disadvantages
-- not interactive: it is completely independent from the batch queuing systems (i.e. Slurm, LSF, OGE, etc...). You should write a script to pass the list of commands and the execution constraints to the queuing system.
+- not interactive: Although we provide a very simple local job scheduler (check the `snap_scheduler` command) for testing purposes, SnapFlow is completely independent from the batch queuing systems (i.e. Slurm, LSF, OGE, etc...). You should write a script to pass the list of commands and the execution constraints to the queuing system.
 
 *An example of such parser, compatible with Slurm, can be found [here](https://github.com/fransua/slurm_utils/blob/master/scripts/submitting/slurm_do.py).*
 
@@ -25,6 +25,8 @@ The idea of the pipeline os to process 3 FASTA files in the following manner:
   - reverse the sequences
   - compute some stats about the original sequences.
 
+### Configuration file
+
 We first create a yaml file that contain the path to the input files `params.yaml`:
 
 ```yaml
@@ -35,13 +37,15 @@ test:
     - Data/sample_3.fa
 ```
 
+### Main workflow
+
 then, using the template of the generate_workflow we add this lines:
 
 ```python
     ###########################################################################
     # START WORKFLOW
 
-    # place to store workflow jobs:
+    # place to store workflow jobs/task:
     processes = Process_dict(params, name='Basic pipeline')
 
     ## Split sequences in the fasta into different files
@@ -58,6 +62,8 @@ then, using the template of the generate_workflow we add this lines:
     processes.write_commands(opts.sequential)
     processes.do_mermaid(result_dir)
 ```
+
+### Modules - secondary workflows
 
 Inside the modules folder we can create the `rule` functions to process the input as wanted.
 
@@ -138,6 +144,8 @@ echo Total bases: `cat {input_['sequences']} | grep -v '>'| wc -l` >> {output['s
 To create a rule we just use the `rule` decorator on a function that contains 3 variables: `input_`, `output` and `cmd`.
 The decorator will take care of creating the graph of processes using the input and output defined here.
 
+### Workflow structure
+
 At the end our project could look like this:
 ```text
 .
@@ -153,6 +161,8 @@ At the end our project could look like this:
 │   └── sequence_transformation.py
 └── params.yaml
 ```
+
+### Generation of the tasks
 
 This script can be run as such:
 
@@ -177,7 +187,7 @@ The output would be:
 ```
 This output can be parsed to generate commands with dependency rules.
 
-the script also generates a DAG representing the job dependency graph that looks like:
+The script also generates a DAG representing the job dependency graph that looks like:
 
 ```mermaid
 ---
@@ -275,6 +285,18 @@ basic_run
 ```
 
 The structure of the output respects the module structure defined.
+
+### Testing locally
+
+For testing purposes we developped a simple job scheduler that takes as input the list of jobs/tasks generated above. It can be called as such:
+
+```bash
+python basic_workflow.py --sample test -o basic_run -p params.yaml | snap_scheduler
+```
+
+This command will activate a console to monitor the distribution and processing of the tasks:
+
+![](image.png)
 
 
 ## Advanced options
