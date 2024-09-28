@@ -296,7 +296,7 @@ python basic_workflow.py --sample test -o basic_run -p params.yaml | snap_schedu
 
 This command will activate a console to monitor the distribution and processing of the tasks:
 
-![](image.png)
+![](doc/image.png)
 
 
 ## Advanced options
