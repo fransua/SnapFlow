@@ -6,4 +6,5 @@ setup(
     packages=find_packages(),
     license='GPLv3',
     install_requires=['pyyaml', 'python_mermaid'],
+    scripts=['bin/snap_scheduler'],  # Path to your executable file
 )

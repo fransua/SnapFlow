@@ -1,4 +1,7 @@
+#! /usr/bin/env python
+
 import os
+import sys
 from subprocess import Popen, PIPE
 import argparse
 from time import sleep
@@ -42,17 +45,17 @@ class CustomHelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
         return action.help
 
 
-def parse_jobs(fname):
+def parse_jobs(fh):
     jobs = {}
-    for jid, cmd in enumerate(open(fname, encoding='utf-8'), 1):
+    for jid, cmd in enumerate(fh, 1):
         jobs[jid] = {
-            'cpu'   : 1,
-            'mem'   : 1,
-            'time'  : '2h',
-            'qos'   : 'local',
-            'name'  : f'job_{jid}',
-            'depe'  : None,
-            'status': 'pending',
+            'cpus-per-task': 1,
+            'mem'          : 1,
+            'time'         : '2h',
+            'qos'          : 'local',
+            'name'         : f'job_{jid}',
+            'depe'         : None,
+            'status'       : 'pending',
             }
 
         if cmd.startswith('['):
@@ -62,7 +65,7 @@ def parse_jobs(fname):
                 inargs['depe'] = [int(d) for d in inargs['depe'].split(',')]
             jobs[jid].update(inargs)
             jobs[jid]['cmd'] = cmd.split(']')[1].strip()
-            jobs[jid]['cpu'] = int(jobs[jid]['cpu'])
+            jobs[jid]['cpus-per-task'] = int(jobs[jid]['cpus-per-task'])
             jobs[jid]['mem'] = int(jobs[jid]['mem'])
         else:
             jobs[jid]['cmd'] = cmd.strip()
@@ -88,8 +91,13 @@ def main():
     opts = get_options()
     total_cpu = opts.cpus
     total_mem = opts.mem
+    
+    if not sys.stdin.isatty():
+        input_stream = sys.stdin
+    else:
+        input_stream = open(opts.job_list, encoding='utf-8')
 
-    jobs = parse_jobs(opts.job_list)
+    jobs = parse_jobs(input_stream)
 
     available_cpu = total_cpu
     available_mem = total_mem
@@ -100,11 +108,11 @@ def main():
     while pending_jobs:
         for jid in list(pending_jobs.keys()):
             # can run the job?
-            if (jobs[jid]['cpu'] <= available_cpu and
+            if (jobs[jid]['cpus-per-task'] <= available_cpu and
                 jobs[jid]['mem'] <= available_mem and
                 jobs[jid]['status'] == 'pending' and
                 all_satisfied(jid, jobs, pending_jobs)):
-                available_cpu -= jobs[jid]['cpu']
+                available_cpu -= jobs[jid]['cpus-per-task']
                 available_mem -= jobs[jid]['mem']
                 procs[jid] = Popen(jobs[jid]['cmd'], shell=True,
                                    stdout=PIPE, stderr=PIPE)
@@ -116,7 +124,7 @@ def main():
                     jobs[jid]['status'] = 'error'
                 else:                    
                     jobs[jid]['status'] = 'done'
-                available_cpu += jobs[jid]['cpu']
+                available_cpu += jobs[jid]['cpus-per-task']
                 available_mem += jobs[jid]['mem']
                 del procs[jid]
                 del pending_jobs[jid]
@@ -129,9 +137,11 @@ def get_options():
     parser = argparse.ArgumentParser(
         description='Simple job scheduller to be used in local.',
         formatter_class=CustomHelpFormatter)
-    parser.add_argument('-i', dest='job_list', type=str, metavar='FILE', required=True,
+    parser.add_argument('-i', dest='job_list', type=str, metavar='FILE', 
+                        required=sys.stdin.isatty(),
                         help=('Input file containing the list of jobs to run with'
-                              ' number of CPUs and MEM to dedicate to each'))
+                              ' number of CPUs and MEM to dedicate to each. '
+                              'Can also be passed through stdin.'))
     parser.add_argument('--cpus', type=int, default=os.cpu_count(), metavar='',
                         help='Number of CPUs to be used in total by scheduller')
     parser.add_argument('--mem', type=int, metavar='',
