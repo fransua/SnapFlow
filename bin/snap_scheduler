@@ -13,8 +13,18 @@ def clear_console():
 
 
 def print_status(status_info):
+    name_w = 50
+    status_w = 15
+    cpu_w = 5
+    mem_w = 5
+    total_w = name_w + status_w + mem_w + cpu_w + 5
     clear_console()
-    print("============ Simple Job Scheduller ============")
+    print('_' * total_w)
+    print('|' + (' ' * (total_w - 2)) + '|')
+    print(f"|{'Simple Job Scheduller':^{total_w - 2}}|")
+    print('|' + ('_' * (total_w - 2)) + '|')
+    print(f"|{'job name':^{name_w}}|{'CPUs':^{cpu_w}}|{'Mem':^{mem_w}}|{'Status':^{status_w}}|")
+    print('|' + ('-' * (total_w - 2)) + '|')
     for value in status_info.values():
         status = value['status']
         # Set color based on status
@@ -33,8 +43,8 @@ def print_status(status_info):
             color = '\033[93m'  # Red
         else:
             color = '\033[0m'   # Default color (reset)
-        print(f"{value['name']:<30}: {color}{status:>15}""\033[0m")
-    print("=" * (30 + 15 + 2))
+        print(f"|{value['name']:<{name_w}}|{value['cpus-per-task']:>{cpu_w}}|{value['mem']:>{mem_w}}|{color}{status:>{status_w}}""\033[0m|")
+    print("=" * (total_w))
 
 
 class CustomHelpFormatter(argparse.ArgumentDefaultsHelpFormatter):

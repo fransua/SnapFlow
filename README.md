@@ -173,15 +173,15 @@ python basic_workflow.py --sample test -o basic_run -p params.yaml
 The output would be:
 
 ```text
-[name scHiC-split_sequences_rep1;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep1/.command.sh
-[name scHiC-reverse_rep1;cpus-per-task 1;time 1:00;depe 1]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep1/.command.sh
-[name scHiC-count_bases_rep1;cpus-per-task 1;time 2:00;depe 1]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep1/.command.sh
-[name scHiC-split_sequences_rep2;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep2/.command.sh
-[name scHiC-reverse_rep2;cpus-per-task 1;time 1:00;depe 4]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep2/.command.sh
-[name scHiC-count_bases_rep2;cpus-per-task 1;time 2:00;depe 4]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep2/.command.sh
-[name scHiC-split_sequences_rep3;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep3/.command.sh
-[name scHiC-reverse_rep3;cpus-per-task 1;time 1:00;depe 7]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep3/.command.sh
-[name scHiC-count_bases_rep3;cpus-per-task 1;time 2:00;depe 7]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep3/.command.sh
+[name split_sequences_rep1;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep1/.command.sh
+[name reverse_rep1;cpus-per-task 1;time 1:00;depe 1]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep1/.command.sh
+[name count_bases_rep1;cpus-per-task 1;time 2:00;depe 1]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep1/.command.sh
+[name split_sequences_rep2;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep2/.command.sh
+[name reverse_rep2;cpus-per-task 1;time 1:00;depe 4]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep2/.command.sh
+[name count_bases_rep2;cpus-per-task 1;time 2:00;depe 4]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep2/.command.sh
+[name split_sequences_rep3;cpus-per-task 1;time 5:00]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep3/.command.sh
+[name reverse_rep3;cpus-per-task 1;time 1:00;depe 7]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep3/.command.sh
+[name count_bases_rep3;cpus-per-task 1;time 2:00;depe 7]  /bin/bash /home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep3/.command.sh
 
 
 ```
@@ -296,7 +296,7 @@ python basic_workflow.py --sample test -o basic_run -p params.yaml | snap_schedu
 
 This command will activate a console to monitor the distribution and processing of the tasks:
 
-<img src="doc/image.png" width="400"/>
+<img src="doc/image.png" width="600"/>
 
 ## Advanced options
 

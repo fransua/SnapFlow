@@ -191,7 +191,7 @@ class Process_dict(dict):
                 prefix = ''
             else:
                 prefix = ("["
-                        f"name scHiC-{name.replace(' ', '_')};"
+                        f"name {name.replace(' ', '_')};"
                         f"cpus-per-task {process.cpus};"
                         f"time {process.time}"
                         f"{dependencies}"
