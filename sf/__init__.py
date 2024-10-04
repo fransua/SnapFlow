@@ -129,7 +129,7 @@ class Process_dict(dict):
         self.update(*args, **kwargs)
         if params.get('with-singularity', None) is not None:
             if  params.get('singularity-bind', None) is not None:
-                bind = f"--bind {params['singularity-bind']} "
+                bind = f"{' '.join(["--bind " + s for s in params['singularity-bind']])} "
             else:
                 bind = ''
             self.singularity  = f"singularity exec {bind}{params['with-singularity']} "
@@ -383,6 +383,12 @@ cd {WORKDIR}
 
 {CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo ok > {WORKDIR}/.done
 
-{PUBLISH} ||  rm -f {WORKDIR}/.done
+DONE_FILE={WORKDIR}/.done
+
+{PUBLISH} ||  rm -f $DONE_FILE
+
+if [[ ! -f "$DONE_FILE" ]]; then
+  exit 1
+fi
 
 '''
