@@ -39,6 +39,9 @@ def print_status(status_info):
         elif status == 'pending':
             status = 'pending ⧖'
             color = '\033[37m'  # light Gray
+        elif status == 'dependent':
+            status = 'dependent ⧗'
+            color = '\033[37m'  # light Gray
         elif status == 'unsatisfiable':
             status = "dependency ✗"
             color = '\033[93m'  # Red
@@ -74,6 +77,7 @@ def parse_jobs(fh):
                           for c in cmd[1:].split('] ')[0].strip().split(';'))
             if 'depe' in inargs:
                 inargs['depe'] = [int(d) for d in inargs['depe'].split(',')]
+                inargs['status'] = 'dependent'
             jobs[jid].update(inargs)
             jobs[jid]['cmd'] = cmd.split(']')[1].strip()
             jobs[jid]['cpus-per-task'] = int(jobs[jid]['cpus-per-task'])
@@ -121,7 +125,7 @@ def main():
             # can run the job?
             if (jobs[jid]['cpus-per-task'] <= available_cpu and
                 jobs[jid]['mem'] <= available_mem and
-                jobs[jid]['status'] == 'pending' and
+                jobs[jid]['status'] in ['pending', 'dependent'] and
                 all_satisfied(jid, jobs, pending_jobs)):
                 available_cpu -= jobs[jid]['cpus-per-task']
                 available_mem -= jobs[jid]['mem']
