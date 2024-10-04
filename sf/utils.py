@@ -2,7 +2,7 @@ import os
 from yaml import Dumper, dump as dump_yaml
 
 def create_workdir(result_dir, sample, singularity_img,
-                   singularity_bind, params):
+                   singularity_binds, params):
     """
     :param result_dir: path for the global output directory
     :param sample: sample name to search for in the params dictionary (from the input YAML file)
@@ -17,7 +17,7 @@ def create_workdir(result_dir, sample, singularity_img,
     ## prepare parameter file
     if singularity_img is not None:
         params['with-singularity'] = singularity_img
-        params['singularity-bind'] = singularity_bind
+        params['singularity-bind'] = singularity_binds
 
     param_file = os.path.join(result_dir, f'{sample}_params.yaml')
 
