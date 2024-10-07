@@ -70,7 +70,7 @@ def parse_jobs(fh):
             'time'         : '2h',
             'qos'          : 'local',
             'name'         : f'job_{jid}',
-            'depe'         : None,
+            'depe'         : set(),
             'status'       : 'pending',
             }
 
@@ -78,7 +78,7 @@ def parse_jobs(fh):
             inargs = dict(c.split(' ')
                           for c in cmd[1:].split('] ')[0].strip().split(';'))
             if 'depe' in inargs:
-                inargs['depe'] = [int(d) for d in inargs['depe'].split(',')]
+                inargs['depe'] = set([int(d) for d in inargs['depe'].split(',')])
                 inargs['status'] = 'dependent'
             jobs[jid].update(inargs)
             jobs[jid]['cmd'] = cmd.split(']')[1].strip()
@@ -94,7 +94,7 @@ def all_satisfied(jid, jobs, pending_jobs):
     checks if all dependencies are satisfied
     """
     dependencies = jobs[jid]['depe']
-    if dependencies is None:
+    if len(dependencies) == 0:
         return True
     if all(jobs[dep]['status'] == 'done' for dep in dependencies):
         return True
@@ -141,6 +141,11 @@ def main():
                     jobs[jid]['status'] = 'error'
                 else:                    
                     jobs[jid]['status'] = 'done'
+                    for tmp_jid in jobs:
+                        if jid in jobs[tmp_jid]['depe']:
+                            jobs[tmp_jid]['depe'].remove(jid)
+                        if len(jobs[tmp_jid]['depe']) == 0 and jobs[tmp_jid]['status'] == 'dependent':
+                            jobs[tmp_jid]['status'] = 'pending'
                 available_cpu += jobs[jid]['cpus-per-task']
                 available_mem += jobs[jid]['mem']
                 del procs[jid]
