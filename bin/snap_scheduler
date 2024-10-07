@@ -12,16 +12,18 @@ def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def print_status(status_info):
+def print_status(status_info, available_cpu, total_cpu, available_mem, total_mem):
     name_w = 50
     status_w = 15
     cpu_w = 5
     mem_w = 5
     total_w = name_w + status_w + mem_w + cpu_w + 5
+    used_cpu = total_cpu - available_cpu
+    used_mem = total_mem - available_mem
     clear_console()
     print('_' * total_w)
     print('|' + (' ' * (total_w - 2)) + '|')
-    print(f"|{'Simple Job Scheduler':^{total_w - 2}}|")
+    print(f"|{f'Simple Job Scheduler (CPUs: {used_cpu}/{total_cpu}; Mem: {used_mem:.1f}/{total_mem:.1f}Gb)':^{total_w - 2}}|")
     print('|' + ('_' * (total_w - 2)) + '|')
     print(f"|{'job name':^{name_w}}|{'CPUs':^{cpu_w}}|{'Mem':^{mem_w}}|{'Status':^{status_w}}|")
     print('|' + ('-' * (total_w - 2)) + '|')
@@ -144,7 +146,7 @@ def main():
                 del procs[jid]
                 del pending_jobs[jid]
                 break
-        print_status(jobs)
+        print_status(jobs, available_cpu, total_cpu, available_mem, total_mem)
         sleep(0.1)
 
 
