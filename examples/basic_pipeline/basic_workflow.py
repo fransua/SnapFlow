@@ -51,7 +51,7 @@ def main():
     ####
     # END WORKFLOW
     processes.write_commands(opts.sequential)
-    processes.do_mermaid(result_dir)
+    processes.do_mermaid(result_dir, hide_files=False)
 
 def get_options():
     parser = ArgumentParser()

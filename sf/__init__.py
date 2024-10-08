@@ -129,7 +129,7 @@ class Process_dict(dict):
         self.update(*args, **kwargs)
         if params.get('with-singularity', None) is not None:
             if  params.get('singularity-bind', None) is not None:
-                bind = f"{' '.join(["--bind " + s for s in params['singularity-bind']])} "
+                bind = f"{' '.join(['--bind ' + s for s in params['singularity-bind']])} "
             else:
                 bind = ''
             self.singularity  = f"singularity exec {bind}{params['with-singularity']} "
@@ -200,7 +200,7 @@ class Process_dict(dict):
             pid += 1
 
 
-    def do_mermaid(self, result_dir: str) -> None:
+    def do_mermaid(self, result_dir: str, hide_files=False) -> None:
         """
         generates a mermaid Directed Acyclic Graph from the processes dictionary.
         """
@@ -212,6 +212,7 @@ class Process_dict(dict):
         nio = {}
         pid = 0
         links = []
+        link_names = set()
         for g in nodes:
             for n, p in self.items():
                 if p.module.lower()==g.id:
@@ -219,18 +220,37 @@ class Process_dict(dict):
                     g.add_sub_nodes([this_node])
                     p.pid = pid
                     nid[pid] = this_node
-                    for o in p.output:
-                        nio[o.lower()] = Node(o.lower(), shape="hexagon")
-                        g.add_sub_nodes([nio[o.lower()]])
-                        links.append(Link(this_node, nio[o.lower()]))
-                    for i in p.input.values():
-                        if i.name.lower() not in nio:  # it's an output from somewhere else
-                            nio[i.name.lower()] = Node(i.name.lower(), shape='cylindrical')
-                        links.append(Link(nio[i.name.lower()], this_node))
+                    if hide_files:
+                        for o in p.output:
+                            nio[o.lower()] = Node(o.lower(), shape="hexagon")
+                            # links.append(Link(this_node, nio[o.lower()]))
+                        for i in p.input.values():
+                            if i.name.lower() not in nio:  # it's an output from somewhere else
+                                nio[i.name.lower()] = Node(i.name.lower(), shape='cylindrical')
+                                # links.append(Link(nio[i.name.lower()], this_node))
+                            else:
+                                if i.process.rule_name not in nio:
+                                    nio[i.process.rule_name] = Node(i.process.rule_name, shape='circle')
+                                if (i.process.rule_name, p.rule_name) not in link_names:
+                                    links.append(Link(nio[i.process.rule_name], this_node))
+                                    link_names.add((i.process.rule_name, p.rule_name))
+                    else:
+                        for o in p.output:
+                            nio[o.lower()] = Node(o.lower(), shape="hexagon")
+                            g.add_sub_nodes([nio[o.lower()]])
+                            if (p.rule_name, o.lower()) not in link_names:
+                                links.append(Link(this_node, nio[o.lower()]))
+                                link_names.add((p.rule_name, o.lower()))
+                        for i in p.input.values():
+                            if i.name.lower() not in nio:  # it's an output from somewhere else
+                                nio[i.name.lower()] = Node(i.name.lower(), shape='cylindrical')
+                            if (i.name.lower(), p.rule_name) not in link_names:
+                                links.append(Link(nio[i.name.lower()], this_node))
+                                link_names.add((i.name.lower(), p.rule_name))
                     pid += 1
         chart = MermaidDiagram(
         title=self.name,
-        nodes=nodes + list(nio.values()),
+        nodes=nodes + ([] if hide_files else list(nio.values())),
         links=links)
 
         out = open(os.path.join(result_dir, 'DAG.mmd'), 'w', encoding='utf-8')
