@@ -17,11 +17,10 @@ def rule(func):
     Optionally we can also set:
      - "publish": a dictionary to copy most relevant output files to the `results` folder.
      
-    On top of this, the rule function should take at least two positional arguments:
-     - a Process_dict instance
-     - a dictionary with parameters
-     
-    and it should also have the `**kwargs` argument.
+    On top of this, the rule function should also have the `**kwargs` argument that may
+       contain extra parameters to be used for processing. Spcieal keywords include:
+     - "cpus" : to request to the scheduler a given amount of CPUs
+     - "time" : to request to the scheduler a given amount of time (format: "2:00:00" for 2 hours)
     
      -> The rule decorator will populate the kwargs argument with the "workdir" key to be used
     for the definition of output paths.
@@ -77,6 +76,14 @@ def rule(func):
             globals.processes.families[func.__name__][name] = proc
             
         return proc
+    doc = """
+     :params 1 cpus: to request to the scheduler a given amount of CPUs
+     :params "1:00:00" time: to request to the scheduler a given amount of time (format: "2:00:00" for 2 hours)
+     """
+    if wrapper.__doc__ is None:
+        wrapper.__doc__ = doc
+    else:
+        wrapper.__doc__ += doc
     return wrapper
 
 class IO_type:
@@ -200,9 +207,12 @@ class Process_dict(dict):
             pid += 1
 
 
-    def do_mermaid(self, result_dir: str, hide_files=False) -> None:
+    def do_mermaid(self, result_dir: str, hide_files: bool=False) -> None:
         """
         generates a mermaid Directed Acyclic Graph from the processes dictionary.
+        
+        :param False hide_files: intermediate and output files are ommitted, only
+           shows original input files and processes.
         """
         from python_mermaid.diagram import MermaidDiagram, Node, Link
         
@@ -229,6 +239,8 @@ class Process_dict(dict):
                                 nio[i.name.lower()] = Node(i.name.lower(), shape='cylindrical')
                                 # links.append(Link(nio[i.name.lower()], this_node))
                             else:
+                                if i.process is None:
+                                    continue
                                 if i.process.rule_name not in nio:
                                     nio[i.process.rule_name] = Node(i.process.rule_name, shape='circle')
                                 if (i.process.rule_name, p.rule_name) not in link_names:
@@ -366,6 +378,7 @@ class Process:
             self.check_output()):
             self.status = "done"
             return True
+        #print(self.func_name, self.workdir, os.path.exists(os.path.join(self.workdir, '.done')), self.check_output())
         self.status = "pending"
         return False
 
@@ -401,11 +414,25 @@ set -euo pipefail  # any error or undefined variable or pipefail (respectively) 
 
 cd {WORKDIR}
 
+touch .running
+
+# Function to run when the script is terminated
+cleanup() {
+  touch .interrupted
+  rm -f .running
+  rm -f .done
+}
+
+# Trap SIGTERM and SIGINT signals
+trap cleanup SIGTERM SIGINT
+
 {CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo ok > {WORKDIR}/.done
 
 DONE_FILE={WORKDIR}/.done
 
 {PUBLISH} ||  rm -f $DONE_FILE
+
+rm -f .running
 
 if [[ ! -f "$DONE_FILE" ]]; then
   exit 1

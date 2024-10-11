@@ -4,7 +4,9 @@ from sf import IO_type, rule
 
 @rule
 def count_bases(splitted, **kwargs):
-
+    """
+    count bases
+    """
     input_  = {
         'sequences': IO_type('path' , 'splitted_files', splitted),
         }
