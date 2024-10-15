@@ -61,8 +61,6 @@ def validate_path(path_str, directory=False):
 
     return path_str
 
-
-
 def transform_path_to_absolute(path):
     if isinstance(path, list) or isinstance(path, tuple):
         paths = []

@@ -4,6 +4,8 @@ import functools
 from sf.utils import create_workdir, make_path_absolute
 from sf.utils import validate_path
 from sf import globals
+from sf.views import generate_mermaid_html
+from datetime import timedelta
 
 
 def rule(func):
@@ -177,7 +179,7 @@ class Process_dict(dict):
         """
         pid = 1
         for name, process in self.items():
-            # TODO: write memory 
+            # TODO: write memory
             # # (memory per cpu should be written in order to compute number of cpus needed)
             if process.is_done():
                 continue
@@ -206,7 +208,6 @@ class Process_dict(dict):
             print(prefix + f"/bin/bash {os.path.join(process.workdir, '.command.sh')}")
             pid += 1
 
-
     def do_mermaid(self, result_dir: str, hide_files: bool=False) -> None:
         """
         generates a mermaid Directed Acyclic Graph from the processes dictionary.
@@ -216,58 +217,52 @@ class Process_dict(dict):
         """
         from python_mermaid.diagram import MermaidDiagram, Node, Link
         
-        groups = set(p.module for p in self.values())
-        nodes = [Node(n.lower()) for n in groups]
-        nid = {}
-        nio = {}
-        pid = 0
-        links = []
-        link_names = set()
-        for g in nodes:
-            for n, p in self.items():
-                if p.module.lower()==g.id:
-                    this_node = Node(p.rule_name, shape="circle")
-                    g.add_sub_nodes([this_node])
-                    p.pid = pid
-                    nid[pid] = this_node
-                    if hide_files:
-                        for o in p.output:
-                            nio[o.lower()] = Node(o.lower(), shape="hexagon")
-                            # links.append(Link(this_node, nio[o.lower()]))
-                        for i in p.input.values():
-                            if i.name.lower() not in nio:  # it's an output from somewhere else
-                                nio[i.name.lower()] = Node(i.name.lower(), shape='cylindrical')
-                                # links.append(Link(nio[i.name.lower()], this_node))
-                            else:
-                                if i.process is None:
-                                    continue
-                                if i.process.rule_name not in nio:
-                                    nio[i.process.rule_name] = Node(i.process.rule_name, shape='circle')
-                                if (i.process.rule_name, p.rule_name) not in link_names:
-                                    links.append(Link(nio[i.process.rule_name], this_node))
-                                    link_names.add((i.process.rule_name, p.rule_name))
-                    else:
-                        for o in p.output:
-                            nio[o.lower()] = Node(o.lower(), shape="hexagon")
-                            g.add_sub_nodes([nio[o.lower()]])
-                            if (p.rule_name, o.lower()) not in link_names:
-                                links.append(Link(this_node, nio[o.lower()]))
-                                link_names.add((p.rule_name, o.lower()))
-                        for i in p.input.values():
-                            if i.name.lower() not in nio:  # it's an output from somewhere else
-                                nio[i.name.lower()] = Node(i.name.lower(), shape='cylindrical')
-                            if (i.name.lower(), p.rule_name) not in link_names:
-                                links.append(Link(nio[i.name.lower()], this_node))
-                                link_names.add((i.name.lower(), p.rule_name))
-                    pid += 1
+        # define all subgraphs(modules grouping processes)
+        groups = set(p.module.lower() for p in self.values())
+        node_groups = [Node(n, " ") for n in groups]
+        
+        nodes = dict()
+        name2rule = {}
+        metadata = {}
+        # add subnodes to groups
+        for group in node_groups:
+            for p in self.values():
+                if p.module.lower() != group.id:
+                    continue
+                name2rule[p.name] = p.rule_name
+                if p.rule_name in nodes:
+                    continue
+                metadata[p.rule_name] = p.get_metadata()
+                node = Node(p.rule_name, f":::{metadata[p.rule_name]['class']}")
+                nodes[p.rule_name] = node
+                group.add_sub_nodes([node])
+        
+        # add edges
+        edges = []
+        edge_names = set()
+        for p in self.values():
+            for d in p.dependencies:
+                a, b = name2rule[d], p.rule_name
+                if (a, b) in edge_names:
+                    continue
+                edge_names.add((a, b))
+                edges.append(Link(nodes[a], nodes[b]))
+
         chart = MermaidDiagram(
         title=self.name,
-        nodes=nodes + ([] if hide_files else list(nio.values())),
-        links=links)
+        nodes=node_groups + list(nodes.values()),
+        links=edges)
+        
+        chart = str(chart)
 
         out = open(os.path.join(result_dir, 'DAG.mmd'), 'w', encoding='utf-8')
-        out.write(str(chart))
+        out.write(chart)
         out.close()
+
+        chart = chart.replace('["', '')
+        chart = chart.replace('"]', '')
+        generate_mermaid_html(chart, metadata_dict=metadata,
+                              output_file=os.path.join(result_dir, 'iDAG.html'))
 
 
 class _Process_output(dict):
@@ -369,6 +364,25 @@ class Process:
         out = open(os.path.join(self.workdir, '.command.sh'), 'w', encoding='utf-8')
         out.write(script)
         out.close()
+        
+    def get_metadata(self):
+        def _get_time(path) -> str:
+            tpath = os.path.join(path, '.done')
+            if os.path.exists(tpath):
+                seconds = int(next(open(tpath, encoding='utf-8')).strip())
+                return str(timedelta(seconds=seconds))
+            return 'N/A'
+        status = ('Completed' if self.is_done() else
+                  'Error' if os.path.exists(os.path.join(self.workdir, '.error')) else
+                  'In Progress' if os.path.exists(os.path.join(self.workdir, '.running')) else
+                  'Pending')
+        return {
+            'label'     : self.name,
+            'class'     : status.lower().replace(' ', ''),
+            'workdir'   : self.workdir,
+            'time_spent': _get_time(self.workdir),
+            'status'    : status
+            }
 
     def is_done(self):
         """
@@ -414,27 +428,28 @@ set -euo pipefail  # any error or undefined variable or pipefail (respectively) 
 
 cd {WORKDIR}
 
-touch .running
+SECONDS=0
 
-# Function to run when the script is terminated
-cleanup() {
-  touch .interrupted
-  rm -f .running
-  rm -f .done
-}
+touch {WORKDIR}/.running
 
-# Trap SIGTERM and SIGINT signals
-trap cleanup SIGTERM SIGINT
+trap 'error_handler $LINENO $?' ERR
 
-{CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo ok > {WORKDIR}/.done
+error_handler() {{
+    echo $SECONDS > {WORKDIR}/.error
+    rm -f {WORKDIR}/.running
+    exit 1
+}}
 
 DONE_FILE={WORKDIR}/.done
 
+{CMD} 2> {WORKDIR}/.command.err 1> {WORKDIR}/.command.out && echo $SECONDS > $DONE_FILE
+
 {PUBLISH} ||  rm -f $DONE_FILE
 
-rm -f .running
+rm -f {WORKDIR}/.running
 
 if [[ ! -f "$DONE_FILE" ]]; then
+  echo $SECONDS > {WORKDIR}/.error
   exit 1
 fi
 
