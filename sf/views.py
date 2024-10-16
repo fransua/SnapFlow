@@ -1,10 +1,11 @@
 def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     # assign color depending on status    
     colors = {
-        'pending'    : '#6F7777',
-        'inprogress': '#F7DEAD',
-        'error'      : '#CD4439',
-        'completed'  : '#72B896',
+        'pending'        : '#6F7777',
+        'inprogress'     : '#F7DEAD',
+        'error'          : '#CD4439',
+        'completed'      : '#72B896',
+        'missingoutput'  : '#E29173',
     }
     for d in metadata_dict.values():
         d['color'] = colors[d['class']]
@@ -62,70 +63,142 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
         <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
         <style>
+           /* General reset for the page */
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+
             body {{
                 font-family: Arial, sans-serif;
+                background-color: #F8F8F8;
+            }}
+
+            .container {{
+                display: flex; /* Use flexbox for layout */
+                height: 100vh; /* Full height of the viewport */
+                overflow: hidden; /* Prevent horizontal scroll */
             }}
 
             .hidden {{
-            display: none;
+                display: none;
             }}
             
-            .copy-button {{
-            cursor: pointer;
-            color: blue;
-            text-decoration: underline;
-            }}
-            
-            #graph-container {{
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-                gap: 10px;
-                margin-top: 10px;
-            }}
-
             #graph {{
                 border: 1px solid #ccc;
-                min-width: 900px;
-                min-height: 900px;
+                background-color: #FFFFFF;
                 overflow: hidden;
                 position: relative;
+                padding: 20px;
+            }}
+            
+            #metadata-container {{
+                border: 1px solid #ccc;           
+                background-color: #FFFFFF;
+                overflow: hidden;
+                position: relative;
+                padding: 20px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Visual effect */
+            }}
+            
+            /* Left div with long scrollable content */
+            .left-div {{
+                flex: 2; /* Take up more space */
+                background-color: #F8F8F8;
+                padding: 20px;
+                position: relative;
+                overflow: hidden; /* Enable vertical scrolling */
+                height: 100vh; /* Ensure it fills the full viewport height */
             }}
 
-            #metadata {{
-                border: 1px solid #ccc;
-                padding: 10px;
-                width: 300px;
-                height: 400px;
+            /* Right div that stays visible while scrolling */
+            .right-div {{
+                flex: 1; /* Take up less space */
+                background-color: #F8F8F8;
+                padding: 20px;
+                position: sticky;
+                top: 20px; /* Maintain a gap from the top */
+                height: fit-content; /* Ensure it only takes as much space as needed */
+            }}
+
+            .copy-button {{
+                cursor: pointer;
+                color: grey;
+                text-decoration: underline;
             }}
 
             svg {{
                 cursor: grab;
                 transition: transform 0.1s; /* Smooth out dragging */
+                width: 100%; /* Scale SVG to fit container */
+                height: 100%;
+            }}
+            
+            /* Container for the graph */
+            .graph-container {{
+                width: 100%;
+                height: 99%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: auto; /* Allow graph dragging */
             }}
 
             svg:active {{
                 cursor: grabbing;
             }}
-            h3 {{text-align: center;}}
-            h4 {{text-align: center;}}
+            h3 {{
+                text-align: center;
+                margin-bottom: 20px; /* Adjust this value as needed */
+            }}
+            h4 {{
+                text-align: center;
+                margin-bottom: 10px; /* Adjust this value as needed */
+                }}
+
+            table {{
+                width: 100%;
+                border-collapse: collapse; /* Remove space between cells */
+                margin: 20px 0; /* Add some space above and below the table */
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Add shadow effect */
+            }}
+            th, td {{
+                padding: 12px; /* Add padding to cells */
+                text-align: left; /* Align text to the left */
+                border-bottom: 1px solid #ddd; /* Add a bottom border to cells */
+            }}
+            th {{
+                background-color: #4CAF50; /* Green background for the header */
+                color: white; /* White text color for the header */
+            }}
+            tr:hover {{
+                background-color: #f1f1f1; /* Highlight row on hover */
+            }}
+            
+            .highlight {{
+                font-weight: bold; /* Optional: make the highlighted text bold */
+            }}
+
         </style>
     </head>
     <body>
 
     <!-- Graph and Metadata Container -->
-    <div id="graph-container">
-        <div>
-        <h3>SnapFlow processing summary</h3>
-        <div id="graph">
-            <div class="mermaid">
-                {graph_content}
+    <div class="container" id="graph-container">
+        <div class="left-div">
+            <h3>SnapFlow processing summary</h3>
+            <div class="graph-container" id="graph">
+                <div class="mermaid">
+                    {graph_content}
+                </div>
             </div>
         </div>
-        </div>
-        <div>
+        <div class="right-div">
             <h4>Metadata:</h4>
-        <div id="metadata">Click a node to display its metadata here.</div>
+            <div id="metadata-container">
+                <div id="metadata">Click a node to display its metadata here.</div>
+            </div>
         </div>
     </div>
 
@@ -190,11 +263,20 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
                     const metadata = {metadata_dict};
                     const data = metadata[nodeId] || {{}};
                     const content = `
-                        <strong>Name:</strong> ${{data.label || 'Unnamed'}}<br>
-                        <strong>Status:</strong> ${{data.status || 'Unknown'}}<br>
-                        <strong>Time Spent:</strong> ${{data.time_spent || 'N/A'}}<br>
-                        <strong>Class:</strong> ${{data.class || 'default'}}<br>
-                        <strong>Workdir:</strong> <span class="copy-button" onclick="copyHiddenText()">copy path</span><span id="hidden-text" class="hidden">${{data.workdir || '??'}}</span>
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td><span class="highlight">Name</span></td><td>${{data.label || 'Unnamed'}}</td>
+                            </tr>
+                                <td><span class="highlight">Status</span></td><td>${{data.status || 'Unknown'}}</td>
+                            <tr>
+                            </tr>
+                                <td><span class="highlight">Time Spent</span></td><td>${{data.time_spent || 'N/A'}}</td>
+                            <tr>
+                                <td><span class="highlight">Workdir</span></td><td><span class="copy-button" onclick="copyHiddenText()"><i>copy path</i></span><span id="hidden-text" class="hidden">${{data.workdir || '??'}}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
                     `;
                     const label = node.querySelector('.nodeLabel, foreignObject span');
                     document.getElementById('metadata').innerHTML = content;
@@ -233,8 +315,6 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     # Write the generated HTML to the output file
     with open(output_file, "w") as f:
         f.write(html_template)
-
-    print(f"HTML saved to {output_file}. Open it in your browser.")
     
 def main():
     # Example usage

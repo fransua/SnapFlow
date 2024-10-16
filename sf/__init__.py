@@ -366,10 +366,18 @@ class Process:
         def _get_time(path) -> str:
             tpath = os.path.join(path, '.done')
             if os.path.exists(tpath):
+                try:
+                    seconds = int(next(open(tpath, encoding='utf-8')).strip())
+                except ValueError:  # for back compatibility TODO: remove in future
+                    return 'N/A'
+                return str(timedelta(seconds=seconds))
+            tpath = os.path.join(path, '.error')
+            if os.path.exists(tpath):
                 seconds = int(next(open(tpath, encoding='utf-8')).strip())
                 return str(timedelta(seconds=seconds))
             return 'N/A'
         status = ('Completed' if self.is_done() else
+                  'Missing output' if os.path.exists(os.path.join(self.workdir, '.done')) else
                   'Error' if os.path.exists(os.path.join(self.workdir, '.error')) else
                   'In Progress' if os.path.exists(os.path.join(self.workdir, '.running')) else
                   'Pending')
@@ -428,6 +436,7 @@ cd {WORKDIR}
 SECONDS=0
 
 touch {WORKDIR}/.running
+rm -f {WORKDIR}/.error
 
 trap 'error_handler $LINENO $?' ERR
 
