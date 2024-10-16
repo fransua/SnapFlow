@@ -27,6 +27,27 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     
     # Combine the graph lines and class definitions
     graph_content = graph_data + '\n' + class_definitions
+    
+    graph_theme = """
+
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+        'textColor': '#191919',
+        'primaryColor': '#BB2528',
+        'primaryTextColor': '#fff',
+        'primaryBorderColor': '#7C0000',
+        'clusterBkg': '#E9EED9',
+        'titleColor':'#54473F',
+        'lineColor': '#B0B0B0',
+        'secondaryColor': '#006100'
+    }
+  }
+}%%
+
+    """
+    graph_content = graph_content.replace("graph TD", graph_theme + "graph TD")
 
     # HTML template with placeholders
     html_template = f"""
@@ -98,21 +119,6 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
         <h3>SnapFlow processing summary</h3>
         <div id="graph">
             <div class="mermaid">
-            %%{{
-  init: {{
-    'theme': 'base',
-    'themeVariables': {{
-      'primaryColor': '#BB2528',
-      'primaryTextColor': '#fff',
-      'primaryBorderColor': '#7C0000',
-      'clusterBkg': '#E9EED9',
-      'titleColor':'#54473F',
-      'lineColor': '#B0B0B0',
-      'secondaryColor': '#006100',
-      'tertiaryColor': '#fff'
-    }}
-  }}
-}}%%
                 {graph_content}
             </div>
         </div>

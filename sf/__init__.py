@@ -215,30 +215,34 @@ class Process_dict(dict):
         :param False hide_files: intermediate and output files are ommitted, only
            shows original input files and processes.
         """
-        from python_mermaid.diagram import MermaidDiagram, Node, Link
-        
         # define all subgraphs(modules grouping processes)
-        groups = set(p.module.lower() for p in self.values())
-        node_groups = [Node(n, " ") for n in groups]
+        node_groups = set(p.module.lower() for p in self.values())
+        chart = """
+---
+title: nanoCT-3D
+---
+graph TD
+"""
         
-        nodes = dict()
         name2rule = {}
         metadata = {}
+        nodes = set()
         # add subnodes to groups
         for group in node_groups:
+            chart += f"    subgraph {group}\n"
             for p in self.values():
-                if p.module.lower() != group.id:
+                if p.module.lower() != group:
                     continue
                 name2rule[p.name] = p.rule_name
                 if p.rule_name in nodes:
                     continue
+                nodes.add(p.rule_name)
                 metadata[p.rule_name] = p.get_metadata()
-                node = Node(p.rule_name, f":::{metadata[p.rule_name]['class']}")
-                nodes[p.rule_name] = node
-                group.add_sub_nodes([node])
+                chart += f"        {p.rule_name}:::{metadata[p.rule_name]['class']}\n"
+            chart += "    end\n"
         
         # add edges
-        edges = []
+        chart += "\n"
         edge_names = set()
         for p in self.values():
             for d in p.dependencies:
@@ -246,12 +250,7 @@ class Process_dict(dict):
                 if (a, b) in edge_names:
                     continue
                 edge_names.add((a, b))
-                edges.append(Link(nodes[a], nodes[b]))
-
-        chart = MermaidDiagram(
-        title=self.name,
-        nodes=node_groups + list(nodes.values()),
-        links=edges)
+                chart += f"{a} ---> {b}\n"
         
         chart = str(chart)
 
@@ -259,8 +258,6 @@ class Process_dict(dict):
         out.write(chart)
         out.close()
 
-        chart = chart.replace('["', '')
-        chart = chart.replace('"]', '')
         generate_mermaid_html(chart, metadata_dict=metadata,
                               output_file=os.path.join(result_dir, 'iDAG.html'))
 
