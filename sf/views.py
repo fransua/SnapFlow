@@ -275,6 +275,12 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
                             <tr>
                                 <td><span class="highlight">Workdir</span></td><td><span class="copy-button" onclick="copyHiddenText()"><i>copy path</i></span><span id="hidden-text" class="hidden">${{data.workdir || '??'}}</span></td>
                             </tr>
+                            <tr>
+                                <td><span class="highlight">Inputs</span></td><td>${{data.inputs || '??'}}</td>
+                            </tr>
+                            <tr>
+                                <td><span class="highlight">Outputs</span></td><td>${{data.outputs || '??'}}</td>
+                            </tr>
                         </tbody>
                     </table>
                     `;
