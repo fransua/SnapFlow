@@ -387,8 +387,10 @@ class Process:
             'workdir'   : self.workdir,
             'time_spent': _get_time(self.workdir),
             'status'    : status,
-            'inputs'    : '<ul>' + '\n'.join(f'<li>{k}: <i>{str(v).split("/")[-1]}</i></li>' for k, v in self.input.items()) + '</ul>',
-            'outputs'   : '<ul>' + '\n'.join(f'<li>{k}: <i>{str(v).split("/")[-1]}</i></li>' for k, v in self.output.items()) + '</ul>',
+            'inputs'    : '<ul>' + '\n'.join(f'<li>{k}: <i>{str(v).split("/")[-1]}</i></li>' 
+                                             for k, v in self.input.items()) + '</ul>',
+            'outputs'   : '<ul>' + '\n'.join(f'<li>{k}: <i>{str(v).split("/")[-1]}</i></li>'
+                                             for k, v in self.output.items()) + '</ul>',
             }
 
     def is_done(self):

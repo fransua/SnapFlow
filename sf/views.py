@@ -37,7 +37,7 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     'themeVariables': {
         'textColor': '#191919',
         'primaryColor': '#BB2528',
-        'primaryTextColor': '#fff',
+        'primaryTextColor': '#FFFFFF',
         'primaryBorderColor': '#7C0000',
         'clusterBkg': '#E9EED9',
         'titleColor':'#54473F',
@@ -101,7 +101,19 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
                 padding: 20px;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Visual effect */
             }}
-            
+
+            button {{
+                padding: 4px 8px;
+                background-color: #A1A1A1;
+                color: white;
+                border: none;
+                cursor: pointer;
+                border-radius: 8px;
+                position: absolute;
+                bottom: 10px; /* 10px from the bottom */
+                right: 10px; /* 10px from the right */
+            }}
+
             /* Left div with long scrollable content */
             .left-div {{
                 flex: 2; /* Take up more space */
@@ -135,11 +147,17 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
                 height: 100%;
             }}
             
+                        
             /* Container for the graph */
-            .graph-container {{
+            #graph-container {{
                 width: 100%;
-                height: 99%;
-                display: flex;
+                height: 95%;
+            }}
+
+            /* Sub-container for the graph */
+            .mermaid-container {{
+                width: 100%;
+                height: 95%;
                 align-items: center;
                 justify-content: center;
                 overflow: auto; /* Allow graph dragging */
@@ -181,6 +199,10 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
             }}
 
         </style>
+        
+        <!-- get download icon -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
     </head>
     <body>
 
@@ -188,8 +210,9 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     <div class="container" id="graph-container">
         <div class="left-div">
             <h3>SnapFlow processing summary</h3>
-            <div class="graph-container" id="graph">
-                <div class="mermaid">
+            <div class="mermaid-container" id="graph">
+            <button id="download-btn" style="font-size:14px"><i class="fa fa-download"></i></button>
+                <div class="mermaid" id="mermaid-graph">
                     {graph_content}
                 </div>
             </div>
@@ -203,8 +226,13 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     </div>
 
     <script>
-        mermaid.initialize({{ startOnLoad: true }});
-
+        mermaid.initialize({{ 
+            startOnLoad: true,
+            callback: function () {{
+                console.log('Graph rendered.');
+                enableDownloadButton();
+                }},
+        }});
         let isDragging = false;
         let startX = 0, startY = 0;
         let currentTranslateX = 0, currentTranslateY = 0;
@@ -312,6 +340,33 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
                 }}
             }}, 1000);
         }});
+        
+        // Enable the download button when the graph is ready
+        function enableDownloadButton() {{
+            const downloadBtn = document.getElementById('download-btn');
+            downloadBtn.disabled = false; // Enable the button
+
+            downloadBtn.addEventListener('click', () => {{
+            const svgElement = document.querySelector('#mermaid-graph svg');
+            if (svgElement) {{
+                const svgData = new XMLSerializer().serializeToString(svgElement);
+                const blob = new Blob([svgData], {{ type: 'image/svg+xml;charset=utf-8' }});
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mermaid-graph.svg';
+                a.click();
+                URL.revokeObjectURL(url);
+            }} else {{
+                alert('Graph is not rendered yet.');
+            }}
+            }});
+        }}
+        
+        
+        mermaid.init(undefined, '#mermaid-graph');
+        enableDownloadButton();
     </script>
 
     </body>
