@@ -150,7 +150,6 @@ class Process_dict(dict):
         self.name = name
 
         # to hold conversion table -> useful for meta-processes (1 job, several commands)
-        self.synonyms = {}
         self.families = {}
         globals.processes = self
 
@@ -163,10 +162,7 @@ class Process_dict(dict):
         dict.__setitem__(self, key, process)
 
     def __getitem__(self, key):
-        try:
-            return dict.__getitem__(self, key)
-        except KeyError:
-            return dict.__getitem__(self, self.synonyms[key])
+        return dict.__getitem__(self, key)
     
     def write_commands(self, sequential=True) -> None:
         """
@@ -320,8 +316,17 @@ class Process:
             self.command = command.replace('bin/', f'{globals.processes.result_dir}/bin/')
 
         self.name         = name
-        self.dependencies = set(v.process.name for v in self.input.values()
-                                if v.process is not None)
+        # define dependencies. Extra care for sister processes in the family
+        self.dependencies = set()
+        for v1 in self.input.values():
+            if v1.process is None:
+                continue
+            try:
+                for v in processes.families[v1.process.func_name]:
+                    self.dependencies.add(v)
+            except KeyError:  # this is a primary input
+                self.dependencies.add(v1.process.name)
+
         self.cpus         = cpus
         self.memory       = memory   # Gb
         self.time         = time     # hours
