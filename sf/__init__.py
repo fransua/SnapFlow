@@ -1,11 +1,16 @@
 import os
 import sys
 import functools
-from sf.utils import create_workdir, make_path_absolute
-from sf.utils import validate_path
-from sf import globals
-from sf.views import generate_mermaid_html
-from datetime import timedelta
+from collections                  import defaultdict
+from pickle                       import dump, load
+from datetime                     import timedelta
+
+from sf.IO_utils.workdir          import create_workdir  # import for external shortcut
+from sf.IO_utils.path_validation  import validate_path
+from sf.IO_utils.simple_lock_file import FileLock
+from sf.IO_utils.bash_utils       import color_status
+from sf                           import globals
+from sf.views                     import generate_mermaid_html
 
 
 def rule(func):
@@ -131,7 +136,7 @@ class Process_dict(dict):
     
     It takes as parameter a dictionary of parameters.
     """
-    def __init__(self, params, name=None, *args, **kwargs):
+    def __init__(self, params: dict, name=None, *args, **kwargs):
         """
         :param params: dictionary of parameters
         """
@@ -157,14 +162,17 @@ class Process_dict(dict):
         if key in self:
             raise KeyError(f"Key {key} already defined. Add the "
                            "`replicate_name` argument to your Rule call.")
-        if process.singularity == '':
-            process.singularity = self.singularity
+        try:
+            if process.singularity == '':
+                process.singularity = self.singularity
+        except AttributeError:
+            pass
         dict.__setitem__(self, key, process)
 
     def __getitem__(self, key):
         return dict.__getitem__(self, key)
     
-    def write_commands(self, sequential=True) -> None:
+    def write_commands(self, sequential: bool=True) -> None:
         """
         Write commands in stdout
         
@@ -203,16 +211,36 @@ class Process_dict(dict):
                         f"] {process.singularity} ")
             print(prefix + f"/bin/bash {os.path.join(process.workdir, '.command.sh')}")
             pid += 1
+        self.generate_summary(verbose=False)
 
-    def do_mermaid(self, result_dir: str, hide_files: bool=False) -> None:
+
+    def to_pickle(self) -> None:
         """
-        generates a mermaid Directed Acyclic Graph from the processes dictionary.
+        save processes in a yaml file.
+        
+        """
+        # define all subgraphs(modules grouping processes)
+        pickle_path = os.path.join(self.result_dir, '_processes.pkl')
+        with FileLock(pickle_path):
+            with open(pickle_path, 'wb') as out:
+                dump(self, out)
+
+
+    def generate_summary(self, hide_files: bool=False, verbose: bool=False) -> None:
+        """
+        generates a summary files including:
+         - a mermaid Directed Acyclic Graph from the processes dictionary
+         - a TSV file with run statistics and paths to output files
+         - an interactive html that combines both
         
         :param False hide_files: intermediate and output files are ommitted, only
-           shows original input files and processes.
+           shows original input files and processes. TODO: not implemented
         """
         # define all subgraphs(modules grouping processes)
         node_groups = set(p.module.lower() for p in self.values())
+        tsv = open(os.path.join(self.result_dir, 'run_summary.tsv'), 'w', encoding='utf-8')
+        tsv.write(f"# Group\tRule\tprocess\tStatus\t"
+                    f"time spent\tinputs\toutputs\n")
         chart = """
 ---
 title: nanoCT-3D
@@ -225,18 +253,38 @@ graph TD
         nodes = set()
         # add subnodes to groups
         for group in node_groups:
+            if verbose:
+                sys.stderr.write(f"- {group}\n")
             chart += f"    subgraph {group}\n"
+            rule_names = defaultdict(int)
             for p in self.values():
                 if p.module.lower() != group:
                     continue
-                name2rule[p.name] = p.rule_name
-                if p.rule_name in nodes:
-                    continue
-                nodes.add(p.rule_name)
-                metadata[p.rule_name] = p.get_metadata()
-                chart += f"        {p.rule_name}:::{metadata[p.rule_name]['class']}\n"
+                rule_names[p.rule_name] += 1
+            for rule in rule_names:
+                if verbose:
+                    sys.stderr.write(f"    - {p.rule_name}\n")
+                for p in self.values():
+                    if p.module.lower() != group:
+                        continue
+                    if p.rule_name != rule:
+                        continue
+                    name2rule[p.name] = p.rule_name
+                    mdata = p.get_metadata()
+                    if verbose:
+                        sys.stderr.write(f"        - {p.name:<30}      "
+                                         f"{color_status(mdata['status'], r_align=18)}\n")
+                    inputs = ';'.join(f"{k}:{v}" for k, v in p.input.items())
+                    outputs = ';'.join(f"{k}:{v}" for k, v in p.output.items())
+                    tsv.write(f"{group}\t{rule}\t{p.name}\t{mdata['status']}\t"
+                              f"{mdata['time_spent']}\t{inputs}\t{outputs}\n")
+                    if p.rule_name in nodes:
+                        continue
+                    nodes.add(p.rule_name)
+                    metadata[p.rule_name] = p.get_metadata()
+                    chart += f"        {p.rule_name}:::{metadata[p.rule_name]['class']}\n"
             chart += "    end\n"
-        
+        tsv.close()
         # add edges
         chart += "\n"
         edge_names = set()
@@ -250,12 +298,13 @@ graph TD
         
         chart = str(chart)
 
-        out = open(os.path.join(result_dir, 'DAG.mmd'), 'w', encoding='utf-8')
+        out = open(os.path.join(self.result_dir, 'DAG.mmd'), 'w', encoding='utf-8')
         out.write(chart)
         out.close()
 
         generate_mermaid_html(chart, metadata_dict=metadata,
-                              output_file=os.path.join(result_dir, 'iDAG.html'))
+                              output_file=os.path.join(self.result_dir, 'iDAG.html'))
+        self.to_pickle()
 
 
 class _Process_output(dict):
@@ -381,10 +430,10 @@ class Process:
                 seconds = int(next(open(tpath, encoding='utf-8')).strip())
                 return str(timedelta(seconds=seconds))
             return 'N/A'
-        status = ('Completed' if self.is_done() else
+        status = ('Done' if self.is_done() else
                   'Missing output' if os.path.exists(os.path.join(self.workdir, '.done')) else
                   'Error' if os.path.exists(os.path.join(self.workdir, '.error')) else
-                  'In Progress' if os.path.exists(os.path.join(self.workdir, '.running')) else
+                  'Running' if os.path.exists(os.path.join(self.workdir, '.running')) else
                   'Pending')
         return {
             'label'     : self.name,

@@ -2,9 +2,9 @@ def generate_mermaid_html(graph_data, metadata_dict, output_file="graph.html"):
     # assign color depending on status    
     colors = {
         'pending'        : '#6F7777',
-        'inprogress'     : '#F7DEAD',
+        'running'        : '#F7DEAD',
         'error'          : '#CD4439',
-        'completed'      : '#72B896',
+        'done'           : '#72B896',
         'missingoutput'  : '#E29173',
     }
     for d in metadata_dict.values():
@@ -389,13 +389,13 @@ def main():
     metadata_dict = {
         "A": {"label"     : "Start", 
             "class"     : "start",
-            "status"    : "Completed",
+            "status"    : "Done",
             "workdir"   : "/somepath/", 
             "time_spent": "5 min"},
-        "B": {"label": "Process", "class": "process", "status": "In Progress", "workdir"   : "/somepath/", "time_spent": "10 min"},
+        "B": {"label": "Process", "class": "process", "status": "Running", "workdir"   : "/somepath/", "time_spent": "10 min"},
         "C": {"label": "Finish", "class": "finish", "status": "Pending", "workdir"   : "/somepath/", "time_spent": "N/A"},
         "D": {"label": "Optional Step", "class": "optional", "status": "Error", "workdir"   : "/somepath/", "time_spent": "0 min"},
-        "E": {"label": "Quantify Expression", "class": "process", "status": "Completed", "workdir"   : "/somepath/", "time_spent": "15 min"},
+        "E": {"label": "Quantify Expression", "class": "process", "status": "Done", "workdir"   : "/somepath/", "time_spent": "15 min"},
     }
 
     generate_mermaid_html(graph_data, metadata_dict)

@@ -6,5 +6,5 @@ setup(
     packages=find_packages(),
     license='GPLv3',
     install_requires=['pyyaml'],
-    scripts=['bin/snap_scheduler'],  # Path to your executable file
+    scripts=['bin/snap_scheduler', 'bin/snap_checker'],  # Path to your executable file
 )

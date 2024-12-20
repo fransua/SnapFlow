@@ -8,7 +8,7 @@ def split_sequences(replicate, **kwargs):
         }
 
     output = {
-        'splitted_files': f"seq_*",
+        'splitted_files': f"seq_1",
         }
 
     cmd = f"""awk '/^>/{{f="seq_"++d}} {{print > f}}' < {input_['seq_path']}"""
