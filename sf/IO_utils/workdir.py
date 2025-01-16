@@ -1,5 +1,14 @@
 import os
 from yaml import Dumper, dump as dump_yaml
+import inspect
+
+
+def get_caller_script_path():
+    # Get the frame of the caller
+    caller_path = os.path.split(inspect.stack()[2].filename)[0]
+    # Get the absolute path of the caller script
+    return os.path.abspath(caller_path)
+
 
 def create_workdir(result_dir, sample, singularity_img,
                    singularity_binds, params):
@@ -27,8 +36,9 @@ def create_workdir(result_dir, sample, singularity_img,
     os.system(f"mkdir -p {result_dir}")
 
     # copy executable files and scripts
-    if os.path.exists('bin'):
-        os.system(f"cp -r bin {result_dir}/")
+    bin_path = os.path.join(get_caller_script_path(), 'bin')
+    if os.path.exists(bin_path):
+        os.system(f"cp -r {bin_path} {result_dir}/")
 
     out = open(param_file, 'w', encoding='utf-8')
     ## TODO: check if differences in parameters (e.g. singularity or versions)
