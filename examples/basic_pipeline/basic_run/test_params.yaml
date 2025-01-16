@@ -1,0 +1,5 @@
+input:
+- Data/sample_1.fa
+- Data/sample_2.fa
+- Data/sample_3.fa
+results directory: basic_run

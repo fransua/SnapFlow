@@ -1,0 +1,3 @@
+>zebra_rabit: 175
+Total sequences: 4
+Total bases: 4
