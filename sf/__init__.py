@@ -6,9 +6,9 @@ from pickle                       import dump, load
 from datetime                     import timedelta
 
 from sf.IO_utils.workdir          import create_workdir  # import for external shortcut
-from sf.IO_utils.path_validation  import validate_path
+from sf.IO_utils.path_validation  import validate_path, make_path_absolute
 from sf.IO_utils.simple_lock_file import FileLock
-from sf.IO_utils.bash_utils       import color_status
+from sf.IO_utils.bash_utils       import color_status, tail
 from sf                           import globals
 from sf.views                     import generate_mermaid_html
 
@@ -274,6 +274,16 @@ graph TD
                     if verbose:
                         sys.stderr.write(f"        - {p.name:<30}      "
                                          f"{color_status(mdata['status'], r_align=18)}\n")
+                        if mdata['status'].lower() == 'error':
+                            cmd_err = os.path.join(mdata['workdir'], '.command.err')
+                            if os.path.exists(cmd_err):
+                                sys.stderr.write(f'\033[93m====> From {cmd_err}:\n')
+                                sys.stderr.write('-' * 80 + '\n')
+                                sys.stderr.write('\n'.join(tail(cmd_err, n=5)) + '\n')
+                                sys.stderr.write('-' * 80 + '\033[0m\n')
+                            else:
+                                sys.stderr.write("\033[93m          -> Execution error check job scheduler's log\033[0m\n")
+                                
                     inputs = ';'.join(f"{k}:{v}" for k, v in p.input.items())
                     outputs = ';'.join(f"{k}:{v}" for k, v in p.output.items())
                     tsv.write(f"{group}\t{rule}\t{p.name}\t{mdata['status']}\t"
