@@ -183,20 +183,20 @@ title: nanoCT-3D
 }%%
 
     graph TD
+    subgraph sequence_stats
+        count_bases:::done
+    end
     subgraph sequence_transformation
         split_sequences:::missingoutput
         reverse:::done
-    end
-    subgraph sequence_stats
-        count_bases:::done
     end
 
 split_sequences ---> reverse
 split_sequences ---> count_bases
 
 classDef defaultSubgraph fill:#F0E68C,stroke:#666,stroke-width:2px;
-classDef missingoutput fill:#E29173,stroke:#E29173,stroke-width:2px;
 classDef done fill:#72B896,stroke:#72B896,stroke-width:2px;
+classDef missingoutput fill:#E29173,stroke:#E29173,stroke-width:2px;
 classDef done fill:#72B896,stroke:#72B896,stroke-width:2px;
                 </div>
             </div>
@@ -272,7 +272,7 @@ classDef done fill:#72B896,stroke:#72B896,stroke-width:2px;
             svg.querySelectorAll('g.node').forEach(node => {
                 node.addEventListener('click', () => {
                     const nodeId = node.getAttribute('data-id');
-                    const metadata = {'split_sequences': {'label': 'split_sequences_rep1', 'class': 'missingoutput', 'workdir': '/home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep1', 'time_spent': '0:00:00', 'status': 'Missing output', 'inputs': '<ul><li>seq_path: <i>sample_1.fa</i></li></ul>', 'outputs': '<ul><li>splitted_files: <i>seq_*</i></li></ul>', 'color': '#E29173'}, 'reverse': {'label': 'reverse_rep1', 'class': 'done', 'workdir': '/home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep1', 'time_spent': '0:00:00', 'status': 'Done', 'inputs': '<ul><li>sequences: <i>seq_*</i></li></ul>', 'outputs': '<ul><li>reversed: <i>reversed.fa</i></li></ul>', 'color': '#72B896'}, 'count_bases': {'label': 'count_bases_rep1', 'class': 'done', 'workdir': '/home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep1', 'time_spent': '0:00:00', 'status': 'Done', 'inputs': '<ul><li>sequences: <i>seq_*</i></li></ul>', 'outputs': '<ul><li>stats: <i>stats.txt</i></li></ul>', 'color': '#72B896'}};
+                    const metadata = {'count_bases': {'label': 'count_bases_rep1', 'class': 'done', 'workdir': '/home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/Sequence_stats/count_bases/rep1', 'time_spent': '0:00:00', 'status': 'Done', 'inputs': '<ul><li>sequences: <i>seq_*</i></li></ul>', 'outputs': '<ul><li>stats: <i>stats.txt</i></li></ul>', 'color': '#72B896'}, 'split_sequences': {'label': 'split_sequences_rep1', 'class': 'missingoutput', 'workdir': '/home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/split_sequences/rep1', 'time_spent': '0:00:00', 'status': 'Missing output', 'inputs': '<ul><li>seq_path: <i>sample_1.fa</i></li></ul>', 'outputs': '<ul><li>splitted_files: <i>seq_*</i></li></ul>', 'color': '#E29173'}, 'reverse': {'label': 'reverse_rep1', 'class': 'done', 'workdir': '/home/fransua/Box/SnapFlow/examples/basic_pipeline/basic_run/tmp/sequence_transformation/reverse/rep1', 'time_spent': '0:00:00', 'status': 'Done', 'inputs': '<ul><li>sequences: <i>seq_*</i></li></ul>', 'outputs': '<ul><li>reversed: <i>reversed.fa</i></li></ul>', 'color': '#72B896'}};
                     const data = metadata[nodeId] || {};
                     const content = `
                     <table>

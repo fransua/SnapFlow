@@ -3,12 +3,12 @@
 title: nanoCT-3D
 ---
 graph TD
+    subgraph sequence_stats
+        count_bases:::done
+    end
     subgraph sequence_transformation
         split_sequences:::missingoutput
         reverse:::done
-    end
-    subgraph sequence_stats
-        count_bases:::done
     end
 
 split_sequences ---> reverse

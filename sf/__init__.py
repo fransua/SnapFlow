@@ -272,8 +272,8 @@ graph TD
                     name2rule[p.name] = p.rule_name
                     mdata = p.get_metadata()
                     if verbose:
-                        sys.stderr.write(f"        - {p.name:<30}      "
-                                         f"{color_status(mdata['status'], r_align=18)}\n")
+                        sys.stderr.write(f"        - {p.name:<55}      "
+                                         f"{color_status(mdata['status'], l_align=18)}\n")
                         if mdata['status'].lower() == 'error':
                             cmd_err = os.path.join(mdata['workdir'], '.command.err')
                             if os.path.exists(cmd_err):
